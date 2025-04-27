@@ -53,9 +53,9 @@ export default function ThemeToggle() {
       onClick={() => setTheme(isDark ? "light" : "dark")}
     >
       {isDark ? (
-        <SunIcon className="h-6 w-6 fill-zinc-100 stroke-zinc-500 group-hover:fill-zinc-200 group-hover:stroke-zinc-700" />
-      ) : (
         <MoonIcon className="h-6 w-6 fill-zinc-700 stroke-zinc-500 group-hover:stroke-zinc-400" />
+      ) : (
+        <SunIcon className="h-6 w-6 fill-zinc-100 stroke-zinc-500 group-hover:fill-zinc-200 group-hover:stroke-zinc-700" />
       )}
     </button>
   );
