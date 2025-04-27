@@ -8,7 +8,7 @@ function SunIcon(props: React.ComponentPropsWithoutRef<"svg">) {
   return (
     <svg
       viewBox="0 0 24 24"
-      strokeWidth="1.5"
+      strokeWidth="1"
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
@@ -28,7 +28,7 @@ function MoonIcon(props: React.ComponentPropsWithoutRef<"svg">) {
     <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
       <path
         d="M17.25 16.22a6.937 6.937 0 0 1-9.47-9.47 7.451 7.451 0 1 0 9.47 9.47ZM12.75 7C17 7 17 2.75 17 2.75S17 7 21.25 7C17 7 17 11.25 17 11.25S17 7 12.75 7Z"
-        strokeWidth="1.5"
+        strokeWidth="0"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -39,22 +39,25 @@ function MoonIcon(props: React.ComponentPropsWithoutRef<"svg">) {
 export default function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
-
   useEffect(() => setMounted(true), []);
-  if (!mounted) return null; // avoid hydration flash
+  if (!mounted) return null;
 
   const isDark = resolvedTheme === "dark";
 
   return (
     <button
       aria-label="Toggle theme"
-      className="group rounded-full bg-white/90 px-3 py-2 ring-1 shadow-lg ring-zinc-900/5 backdrop-blur-sm transition dark:bg-zinc-800/90 dark:ring-white/10"
       onClick={() => setTheme(isDark ? "light" : "dark")}
+      className="flex px-1 py-1
+        items-center justify-center shadow-lg 
+        bg-gray-200 dark:bg-gray-900/60
+        hover:bg-gray-100 dark:hover:bg-gray-600/40
+        rounded-full transition-colors duration-200 backdrop-blur-sm"
     >
       {isDark ? (
-        <MoonIcon className="h-6 w-6 fill-zinc-700 stroke-zinc-500 group-hover:stroke-zinc-400" />
+        <MoonIcon className="h-7 w-7 fill-zinc-100 stroke-gray-900" />
       ) : (
-        <SunIcon className="h-6 w-6 fill-zinc-100 stroke-zinc-500 group-hover:fill-zinc-200 group-hover:stroke-zinc-700" />
+        <SunIcon className="h-7 w-7 fill-zinc-100 stroke-white" />
       )}
     </button>
   );
