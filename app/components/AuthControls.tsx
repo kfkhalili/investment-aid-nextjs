@@ -12,20 +12,27 @@ import { dark } from "@clerk/themes";
 import { useTheme } from "next-themes";
 import { useMemo } from "react";
 
+/* palette for Clerk’s modal */
 const clerkPalette = {
   light: {
-    bg: "#ffffff", // = var(--background)
-    fg: "#171717", // = var(--foreground)
-    primary: "#2563eb", // Tailwind blue-600
+    bg: "#ffffff",
+    fg: "#171717",
+    primary: "#2563eb",
     inputBg: "#ffffff",
   },
   dark: {
-    bg: "#111827", // gray-900
-    fg: "#f3f4f6", // gray-100
-    primary: "#60a5fa", // blue-400
-    inputBg: "#1f2937", // gray-800
+    bg: "#111827",
+    fg: "#f3f4f6",
+    primary: "#60a5fa",
+    inputBg: "#1f2937",
   },
-};
+} as const;
+
+/* the same “idle link” styles used in Navbar */
+const navLinkClasses =
+  "rounded-md px-3 py-2 text-sm transition " +
+  "text-gray-600 hover:bg-gray-100 hover:text-gray-900 " +
+  "dark:text-gray-300 dark:hover:bg-gray-600/40 dark:hover:text-white";
 
 interface Props {
   className?: string;
@@ -35,7 +42,6 @@ export default function AuthControls({ className = "" }: Props) {
   const { resolvedTheme } = useTheme();
   const pal = clerkPalette[resolvedTheme === "dark" ? "dark" : "light"];
 
-  /* one appearance object reused everywhere */
   const appearance = useMemo(
     () => ({
       ...(resolvedTheme === "dark" && { baseTheme: dark }),
@@ -51,21 +57,26 @@ export default function AuthControls({ className = "" }: Props) {
 
   return (
     <div className={`flex items-center gap-4 ${className}`}>
-      {/* ------------  not signed in  ------------- */}
+      {/* ─────────── signed-out ─────────── */}
       <SignedOut>
         <SignInButton
-          key={`sign-in-${resolvedTheme}`} /* remount on toggle */
           mode="modal"
           appearance={appearance}
-        />
+          key={`signin-${resolvedTheme}`}
+        >
+          <button className={navLinkClasses}>Sign&nbsp;in</button>
+        </SignInButton>
+
         <SignUpButton
-          key={`sign-up-${resolvedTheme}`}
           mode="modal"
           appearance={appearance}
-        />
+          key={`signup-${resolvedTheme}`}
+        >
+          <button className={navLinkClasses}>Create&nbsp;Account</button>
+        </SignUpButton>
       </SignedOut>
 
-      {/* ------------    signed in   -------------- */}
+      {/* ─────────── signed-in ─────────── */}
       <SignedIn>
         <UserButton
           key={`user-${resolvedTheme}`}

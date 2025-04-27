@@ -14,10 +14,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import AuthControls from "@/components/AuthControls";
 
 /** main nav links */
-const nav = [
-  { name: "Companies", href: "/companies" },
-  { name: "Else", href: "/else" },
-] as const;
+const nav = [{ name: "Companies", href: "/companies" }] as const;
 
 export default function Navbar() {
   const pathname = usePathname();
