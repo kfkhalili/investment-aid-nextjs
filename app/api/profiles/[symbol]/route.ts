@@ -1,6 +1,6 @@
-// app/api/company-profiles/[symbol]/route.ts
+// app/api/profiles/[symbol]/route.ts
 import { NextResponse } from "next/server";
-import { getCompanyProfile } from "@/api/company-profiles/service"; // adjust path
+import { getProfile } from "@/api/profiles/service"; // adjust path
 
 export async function GET(
   request: Request,
@@ -8,7 +8,7 @@ export async function GET(
 ) {
   try {
     const { symbol } = await params;
-    const data = await getCompanyProfile(symbol.toUpperCase());
+    const data = await getProfile(symbol.toUpperCase());
     return NextResponse.json(data);
   } catch (err) {
     console.error("company-profile error", err);

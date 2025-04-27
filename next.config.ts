@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/",
-        destination: "/companies",
+        destination: "/profiles",
         permanent: true, // 308 hard redirect (set false for 307)
       },
     ];

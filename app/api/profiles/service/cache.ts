@@ -1,16 +1,12 @@
 import { ensureCollection } from "@/api/ensureCollection";
 import { CACHE_TTL_MS } from "./constants";
-import {
-  CompanyProfileDoc,
-  CompanyProfile,
-  mapCompanyProfileDocToCompanyProfile,
-} from "./types";
-import { fetchAndUpsertCompanyProfile } from "./fetch";
+import { ProfileDoc, Profile, mapProfileDocToProfile } from "./types";
+import { fetchAndUpsertProfile } from "./fetch";
 
 /** Read-through cache.
  *  No “fresh” branch yet, but projection/limit stay here, not in route. */
-export async function getCompanyProfiles(): Promise<CompanyProfileDoc[]> {
-  const col = await ensureCollection<CompanyProfileDoc>("company_profiles");
+export async function getProfiles(): Promise<ProfileDoc[]> {
+  const col = await ensureCollection<ProfileDoc>("profiles");
 
   return col
     .find(
@@ -38,10 +34,8 @@ export async function getCompanyProfiles(): Promise<CompanyProfileDoc[]> {
  * Read-through cache for a single symbol.
  * Returns a Company (UI shape), pulling fresh data when stale / missing.
  */
-export async function getCompanyProfile(
-  symbol: string
-): Promise<CompanyProfile> {
-  const col = await ensureCollection<CompanyProfileDoc>("company_profiles", {
+export async function getProfile(symbol: string): Promise<Profile> {
+  const col = await ensureCollection<ProfileDoc>("profiles", {
     symbol: 1,
   });
 
@@ -50,7 +44,7 @@ export async function getCompanyProfile(
   const freshEnough =
     doc && Date.now() - doc.modifiedAt.getTime() < CACHE_TTL_MS;
 
-  if (freshEnough) return mapCompanyProfileDocToCompanyProfile(doc);
+  if (freshEnough) return mapProfileDocToProfile(doc);
 
-  return fetchAndUpsertCompanyProfile(symbol);
+  return fetchAndUpsertProfile(symbol);
 }
