@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
-import { getCompanyProfiles, mapProfileToCompany, Company } from "./service";
+import {
+  getCompanyProfiles,
+  mapCompanyProfileDocToCompanyProfile,
+  CompanyProfile,
+} from "./service";
 
-export async function GET(): Promise<NextResponse<Company[]>> {
+export async function GET(): Promise<NextResponse<CompanyProfile[]>> {
   const docs = await getCompanyProfiles();
-  return NextResponse.json(docs.map(mapProfileToCompany), { status: 200 });
+  return NextResponse.json(docs.map(mapCompanyProfileDocToCompanyProfile), {
+    status: 200,
+  });
 }
