@@ -1,6 +1,6 @@
 import { ObjectId } from "mongodb";
 
-export interface CompanyProfileDoc {
+export interface ProfileDoc {
   _id: ObjectId;
   symbol: string;
   price: number;
@@ -41,7 +41,7 @@ export interface CompanyProfileDoc {
   modifiedAt: Date;
 }
 
-export interface CompanyProfile {
+export interface Profile {
   _id: string; // stringified for the UI
   symbol: string;
   price: number;
@@ -81,9 +81,7 @@ export interface CompanyProfile {
   isFund: boolean;
 }
 
-export const mapCompanyProfileDocToCompanyProfile = (
-  d: CompanyProfileDoc
-): CompanyProfile => ({
+export const mapProfileDocToProfile = (d: ProfileDoc): Profile => ({
   ...d,
   _id: d._id.toHexString(),
 });

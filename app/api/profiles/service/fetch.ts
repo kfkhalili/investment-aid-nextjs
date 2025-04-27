@@ -1,10 +1,6 @@
-// app/api/company-profiles/service/fetch.ts
+// app/api/profiles/service/fetch.ts
 import { ensureCollection } from "@/api/ensureCollection";
-import {
-  CompanyProfileDoc,
-  CompanyProfile,
-  mapCompanyProfileDocToCompanyProfile,
-} from "./types";
+import { ProfileDoc, Profile, mapProfileDocToProfile } from "./types";
 
 interface RawProfile {
   symbol: string;
@@ -49,9 +45,7 @@ const URL = (s: string) =>
   `https://financialmodelingprep.com/stable/profile?symbol=${s}&apikey=${process
     .env.FMP_API_KEY!}`;
 
-export async function fetchAndUpsertCompanyProfile(
-  symbol: string
-): Promise<CompanyProfile> {
+export async function fetchAndUpsertProfile(symbol: string): Promise<Profile> {
   const res = await fetch(URL(symbol), { cache: "no-store" });
   if (!res.ok) throw new Error(`FMP company-profile failed ${res.status}`);
 
@@ -59,7 +53,7 @@ export async function fetchAndUpsertCompanyProfile(
   if (!raw) throw new Error(`profile not found for ${symbol}`);
 
   /* build replacement – NO _id, Mongo will add it */
-  const replacement: Omit<CompanyProfileDoc, "_id"> = {
+  const replacement: Omit<ProfileDoc, "_id"> = {
     symbol: raw.symbol,
     price: raw.price,
     marketCap: raw.marketCap,
@@ -100,7 +94,7 @@ export async function fetchAndUpsertCompanyProfile(
   };
 
   /* upsert */
-  const col = await ensureCollection<CompanyProfileDoc>("company_profiles", {
+  const col = await ensureCollection<ProfileDoc>("profiles", {
     symbol: 1,
   });
 
@@ -112,5 +106,5 @@ export async function fetchAndUpsertCompanyProfile(
 
   /* read the canonical stored version (with real _id) */
   const stored = (await col.findOne({ symbol: replacement.symbol }))!;
-  return mapCompanyProfileDocToCompanyProfile(stored);
+  return mapProfileDocToProfile(stored);
 }
