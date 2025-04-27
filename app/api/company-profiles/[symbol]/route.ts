@@ -1,18 +1,19 @@
+// app/api/company-profiles/[symbol]/route.ts
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
-import { getCompanyProfile } from "../service/cache";
+import { getCompanyProfile } from "@/api/company-profiles/service"; // adjust path
 
 export async function GET(
-  _req: NextRequest,
-  { params }: { params: { symbol: string } }
+  request: Request,
+  { params }: { params: Promise<{ symbol: string }> }
 ) {
   try {
-    const data = await getCompanyProfile(params.symbol.toUpperCase());
+    const { symbol } = await params;
+    const data = await getCompanyProfile(symbol.toUpperCase());
     return NextResponse.json(data);
   } catch (err) {
     console.error("company-profile error", err);
     return NextResponse.json(
-      { error: (err as Error).message },
+      { error: "Could not load company profile" },
       { status: 500 }
     );
   }
