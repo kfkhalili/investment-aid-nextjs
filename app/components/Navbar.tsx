@@ -12,7 +12,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import ThemeToggle from "@/components/ThemeToggle";
 
-const nav = [{ name: "All Companies", href: "/companies" }] as const;
+const nav = [{ name: "Companies", href: "/companies" }] as const;
 
 export default function Navbar() {
   const pathname = usePathname();
