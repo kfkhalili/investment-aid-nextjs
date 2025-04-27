@@ -1,15 +1,14 @@
-import { Table, Company } from "@/components/Table";
+// app/companies/page.tsx  (SC)
+import { Table } from "@/components/Table";
+import {
+  getCompanyProfiles,
+  mapProfileToCompany,
+} from "@/api/company-profiles/service";
 
-const Companies = async () => {
-  const res = await fetch("/api/company-profiles", { cache: "no-store" });
+export const revalidate = 60;
 
-  if (!res.ok) {
-    throw new Error("Could not load company profiles");
-  }
-
-  const data: Company[] = await res.json();
-
+export default async function CompaniesPage() {
+  const rows = await getCompanyProfiles();
+  const data = rows.map(mapProfileToCompany);
   return <Table data={data} />;
-};
-
-export default Companies;
+}
