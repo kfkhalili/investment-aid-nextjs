@@ -21,14 +21,14 @@ import type { BalanceSheetStatement } from "@/api/balance-sheet-statement/servic
  */
 export async function GET(
   request: Request, // Use the request object to access URL
-  { params }: { params: { symbol: string } }
+  { params }: { params: Promise<{ symbol: string }> }
 ): Promise<
   NextResponse<
     BalanceSheetStatement | BalanceSheetStatement[] | { error: string }
   >
 > {
   // Update return type
-  const symbolParam = params.symbol;
+  const { symbol: symbolParam } = await params;
   const symbol = symbolParam?.toUpperCase();
 
   // --- Check for query parameter ---
