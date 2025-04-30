@@ -24,7 +24,9 @@ export async function GET(
   { params }: { params: Promise<{ symbol: string }> }
 ): Promise<
   NextResponse<
-    BalanceSheetStatement | BalanceSheetStatement[] | { error: string }
+    | Partial<BalanceSheetStatement>
+    | Partial<BalanceSheetStatement>[]
+    | { error: string }
   >
 > {
   // Update return type
@@ -50,7 +52,10 @@ export async function GET(
   }
 
   try {
-    let data: BalanceSheetStatement | BalanceSheetStatement[] | null;
+    let data:
+      | Partial<BalanceSheetStatement>
+      | Partial<BalanceSheetStatement>[]
+      | null;
 
     if (getLatestOnly) {
       // --- Fetch Only Latest ---

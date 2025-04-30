@@ -15,14 +15,15 @@ import type { BalanceSheetStatement } from "./service";
  * Uses the underlying service which may return projected data based on configuration.
  */
 export async function GET(): Promise<
-  NextResponse<BalanceSheetStatement[] | { error: string }>
+  NextResponse<Partial<BalanceSheetStatement>[] | { error: string }>
 > {
   console.log("GET /api/balance-sheet-statement called"); // Optional: Logging
 
   try {
     // Call the service function to get the data.
     // This function already handles mapping to the BalanceSheetStatement type.
-    const data: BalanceSheetStatement[] = await getAllBalanceSheetStatements();
+    const data: Partial<BalanceSheetStatement>[] =
+      await getAllBalanceSheetStatements();
 
     // Return the data as JSON response
     return NextResponse.json(data, { status: 200 });

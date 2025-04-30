@@ -116,7 +116,7 @@ export function createGenericService<
   // --- Internal Fetch & Upsert Logic ---
   async function internalFetchAndUpsert(
     symbol?: string
-  ): Promise<ApiType | ApiType[]> {
+  ): Promise<Partial<ApiType> | Partial<ApiType>[]> {
     const apiKey = getFmpApiKey();
     const baseQueryParams = { ...fmpParams, apikey: apiKey };
     let actualUrl: string;
@@ -320,7 +320,7 @@ export function createGenericService<
   } // End of internalFetchAndUpsert
 
   // --- Service Method: Get Single/Latest Record by Symbol ---
-  async function getOne(symbol: string): Promise<ApiType | null> {
+  async function getOne(symbol: string): Promise<Partial<ApiType> | null> {
     const col = await getCollection();
     const filter = { symbol: symbol } as Filter<DocType>; // Use type assertion
 
@@ -382,7 +382,7 @@ export function createGenericService<
   } // End of getOne
 
   // --- Service Method: Get All Records for a Specific Symbol (History) ---
-  async function getAllForSymbol(symbol: string): Promise<ApiType[]> {
+  async function getAllForSymbol(symbol: string): Promise<Partial<ApiType>[]> {
     const col = await getCollection();
     const filter = { symbol: symbol } as Filter<DocType>; // Use type assertion
 
@@ -410,7 +410,7 @@ export function createGenericService<
   } // End of getAllForSymbol
 
   // --- Service Method: Get All Records (List View / Full Collection Refresh Trigger) ---
-  async function getAll(): Promise<ApiType[]> {
+  async function getAll(): Promise<Partial<ApiType>[]> {
     const col = await getCollection();
 
     if (fetchMode === FetchMode.FullCollection) {
@@ -434,7 +434,7 @@ export function createGenericService<
             throw new Error(
               "Internal Error: Expected array result for FullCollection fetch."
             );
-          return freshData as ApiType[]; // Cast justified
+          return freshData;
         } catch (fetchError) {
           const errorMessage =
             fetchError instanceof Error
