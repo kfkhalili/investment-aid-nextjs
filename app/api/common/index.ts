@@ -5,3 +5,4 @@
 
 export * from "./types"; // Re-exports BaseDoc, FetchMode, GenericServiceConfig etc.
 export * from "./genericService"; // Re-exports createGenericService
+export * from "./mappers";

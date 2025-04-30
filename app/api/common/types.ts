@@ -58,7 +58,7 @@ export interface GenericServiceConfig<
   // --- Data Structure, Uniqueness & Mapping ---
   uniqueKeyFields: ReadonlyArray<keyof DocType>;
   mapRawToDoc: (raw: RawType) => Omit<DocType, "_id" | "modifiedAt">;
-  mapDocToApi: (doc: DocType | Partial<DocType>) => ApiType;
+  mapDocToApi: (doc: DocType | Partial<DocType>) => Partial<ApiType>;
   listProjection?: { [K in keyof DocType]?: 1 };
 
   // --- Behavior Modifiers (Conditional based on fetchMode) ---

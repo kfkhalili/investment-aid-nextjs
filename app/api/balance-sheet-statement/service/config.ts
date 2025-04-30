@@ -3,7 +3,7 @@
  * Configuration for the Balance Sheet Statement service.
  * ---------------------------------------------------------------------*/
 import { IndexSpecification } from "mongodb"; // Use the type from your mongodb.d.ts
-import { GenericServiceConfig, FetchMode } from "@/api/common/"; // Import common types
+import { GenericServiceConfig, FetchMode } from "@/api/common"; // Import common types
 
 // Import specific types and mappers for Balance Sheets
 import {
@@ -11,11 +11,11 @@ import {
   BalanceSheetStatementDoc,
   BalanceSheetStatement,
   mapRawBalanceSheetToDoc,
-  mapBalanceSheetDocToApi,
 } from "./types";
 
 // Import or define cache TTL
 import { CACHE_TTL_MS } from "./constants";
+import { mapDocToPartialApi } from "@/api/common";
 
 // --- Define specific configuration for the Balance Sheet service ---
 /**
@@ -119,7 +119,7 @@ export const balanceSheetStatementConfig: GenericServiceConfig<
   // --- Data Structure, Uniqueness & Mapping ---
   uniqueKeyFields: ["symbol", "date"], // Fields defining a unique DB record for upserts
   mapRawToDoc: mapRawBalanceSheetToDoc, // Function mapping FMP Raw -> DB structure
-  mapDocToApi: mapBalanceSheetDocToApi, // Function mapping DB structure -> API response structure
+  mapDocToApi: mapDocToPartialApi, // Function mapping DB structure -> API response structure
   listProjection: listProjection, // Projection for the getAll() list view (optional)
 
   // --- Behavior Modifiers for 'bySymbol' mode ---
