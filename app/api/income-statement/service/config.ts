@@ -21,7 +21,7 @@ import { mapDocToPartialApi } from "@/api/common";
 // --- Define specific configuration for the Income Statement service ---
 
 /**
- * MongoDB index key definitions for the income_statements collection.
+ * MongoDB index key definitions for the income_statement collection.
  * These definitions conform to the IndexSpecification type provided previously.
  * IMPORTANT: Options like 'unique' must be handled separately (e.g., within ensureCollection).
  */
@@ -96,7 +96,7 @@ export const incomeStatementConfig: GenericServiceConfig<
   IncomeStatement
 > = {
   // --- Core Identification & Storage ---
-  collectionName: "income_statements", // MongoDB collection name
+  collectionName: "income_statement", // MongoDB collection name
   collectionIndexes: collectionIndexes, // Index key definitions (options handled elsewhere)
 
   // --- FMP API Fetching ---
