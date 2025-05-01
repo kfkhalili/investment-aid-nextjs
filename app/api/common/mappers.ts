@@ -2,7 +2,6 @@
  * src/api/common/service/mappers.ts
  * Common mapping functions for the generic service.
  * ---------------------------------------------------------------------*/
-import { ObjectId } from "mongodb";
 import { BaseDoc } from "./types"; // Import BaseDoc from your common types
 
 /**
@@ -32,25 +31,15 @@ type PartialApiRepresentation<TDoc extends BaseDoc> = Partial<
 export const mapDocToPartialApi = <TDoc extends BaseDoc>(
   doc: TDoc | Partial<TDoc>
 ): PartialApiRepresentation<TDoc> => {
-  // Create a shallow copy to avoid mutating the original document
+  // Return type updated
   const temp = { ...doc } as Partial<TDoc & BaseDoc>;
 
-  const _id = temp._id; // Capture original _id (ObjectId | undefined)
-  delete temp._id; // Remove original _id property key from temp
-  delete temp.modifiedAt; // Remove modifiedAt property key if it exists
+  // Delete fields not needed in API response
+  delete temp._id;
+  delete temp.modifiedAt;
 
-  // 'temp' now holds the rest of the properties from the input doc (potentially partial)
-  const rest = temp as Partial<Omit<TDoc, "_id" | "modifiedAt">>;
-
-  // Construct the final API object
-  const apiObject: PartialApiRepresentation<TDoc> = {
-    // Add stringified _id first if the original _id existed
-    ...(_id !== undefined && {
-      _id: _id instanceof ObjectId ? _id.toHexString() : String(_id),
-    }),
-    // Spread the rest of the properties AFTER _id
-    ...rest,
-  };
+  // 'temp' now holds the rest, which matches the desired structure
+  const apiObject = temp as PartialApiRepresentation<TDoc>;
 
   return apiObject;
 };
