@@ -64,7 +64,6 @@ export function Table({ data }: TableProps) {
       <div className="mx-auto max-w-9xl">
         <div className="mt-6 overflow-x-auto rounded-md">
           <table className="min-w-full text-sm">
-            {/* header */}
             <thead className="border-b border-gray-300 dark:border-gray-700 text-[color:var(--foreground)]">
               <tr className="select-none">
                 {tableHeaders.map(([label, extra], i) => (
