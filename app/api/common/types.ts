@@ -59,7 +59,9 @@ export interface GenericServiceConfig<
   uniqueKeyFields: ReadonlyArray<keyof DocType>;
   mapRawToDoc: (raw: RawType) => Omit<DocType, "_id" | "modifiedAt">;
   mapDocToApi: (doc: DocType | Partial<DocType>) => Partial<ApiType>;
-  listProjection?: { [K in keyof DocType]?: 1 };
+
+  // Optional: Defines the desired order of keys for the final API response objects.
+  apiFieldOrder?: ReadonlyArray<keyof ApiType>;
 
   // --- Behavior Modifiers (Conditional based on fetchMode) ---
   isSingleRecordPerSymbol?: boolean; // Default: true if fetchMode='bySymbol'

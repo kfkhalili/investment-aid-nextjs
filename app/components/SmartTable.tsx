@@ -73,23 +73,6 @@ const GenericImage: React.FC<{
   alt?: string;
   className?: string;
 }> = ({ src, alt = "image", className = "" }) => {
-  const [failed, setFailed] = React.useState(false);
-  // Simple placeholder, consider a more robust solution if needed
-  const placeholderSrc = `https://placehold.co/20x20/eee/ccc?text=?`;
-
-  if (failed || !src || typeof src !== "string") {
-    return (
-      <Image
-        src={placeholderSrc}
-        alt={alt}
-        width={20}
-        height={20}
-        className={clsx("rounded-full object-cover", className)}
-        onError={() => setFailed(true)}
-      />
-    );
-  }
-
   return (
     <Image
       src={src}
@@ -97,7 +80,6 @@ const GenericImage: React.FC<{
       width={20}
       height={20}
       className={clsx("rounded-full object-cover", className)}
-      onError={() => setFailed(true)}
     />
   );
 };
@@ -171,7 +153,7 @@ const defaultRenderCellContent = <T extends DataItem>(
   const stringKey = String(key);
   const lowerKey = stringKey.toLowerCase();
   if (
-    lowerKey.includes("image") ||
+    lowerKey == "image" ||
     lowerKey.includes("logo") ||
     lowerKey.includes("avatar")
   ) {

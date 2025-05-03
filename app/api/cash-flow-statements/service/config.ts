@@ -15,7 +15,7 @@ import {
 
 // Import or define cache TTL
 // Assuming a local constants file exists:
-import { CACHE_TTL_MS } from "./constants";
+import { CACHE_TTL_MS, cashFlowKeyOrder } from "./constants";
 import { mapDocToPartialApi } from "@/api/common";
 
 // --- Define specific configuration for the Income Statement service ---
@@ -34,57 +34,6 @@ const collectionIndexes: IndexSpecification[] = [
   { modifiedAt: -1 },
 ];
 
-// Projection definition for Cash Flow Statements
-// Use this in your config file (e.g., cash-flow-statement/service/config.ts)
-// Adjust which fields have '1' based on what you need for list views.
-const listProjection: { [K in keyof CashFlowStatementDoc]?: 1 } = {
-  // Fields from BaseDoc (include if needed, e.g., for the mapper or display)
-  _id: 1,
-  symbol: 1,
-  modifiedAt: 1, // Include if needed for display, otherwise mapper removes it
-
-  // Fields specific to CashFlowStatementDoc
-  date: 1,
-  reportedCurrency: 1,
-  cik: 1,
-  fillingDate: 1,
-  acceptedDate: 1,
-  calendarYear: 1,
-  period: 1,
-  netIncome: 1,
-  depreciationAndAmortization: 1,
-  deferredIncomeTax: 1,
-  stockBasedCompensation: 1,
-  changeInWorkingCapital: 1,
-  accountsReceivables: 1, // Often less critical for list view summary
-  inventory: 1, // Often less critical for list view summary
-  accountsPayables: 1, // Often less critical for list view summary
-  otherWorkingCapital: 1, // Often less critical for list view summary
-  otherNonCashItems: 1, // Often less critical for list view summary
-  netCashProvidedByOperatingActivities: 1, // Key metric
-  investmentsInPropertyPlantAndEquipment: 1, // Often same as CapEx
-  acquisitionsNet: 1,
-  purchasesOfInvestments: 1, // Often less critical for list view summary
-  salesMaturitiesOfInvestments: 1, // Often less critical for list view summary
-  otherInvestingActivites: 1, // Often less critical for list view summary
-  netCashUsedForInvestingActivites: 1, // Key metric
-  debtRepayment: 1,
-  commonStockIssued: 1,
-  commonStockRepurchased: 1,
-  dividendsPaid: 1,
-  otherFinancingActivites: 1, // Often less critical for list view summary
-  netCashUsedProvidedByFinancingActivities: 1, // Key metric
-  effectOfForexChangesOnCash: 1, // Often less critical for list view summary
-  netChangeInCash: 1, // Key metric
-  cashAtEndOfPeriod: 1, // Key metric
-  cashAtBeginningOfPeriod: 1, // Often less critical for list view summary
-  operatingCashFlow: 1, // Key metric (Often same as netCashProvidedByOperatingActivities)
-  capitalExpenditure: 1, // Key metric
-  freeCashFlow: 1, // Key metric
-  link: 1, // Useful link
-  finalLink: 1, // Useful link
-};
-
 /**
  * Configuration object passed to `createGenericService` to instantiate
  * the service for fetching and caching Income Statements.
@@ -95,7 +44,7 @@ export const cashFlowStatementConfig: GenericServiceConfig<
   CashFlowStatement
 > = {
   // --- Core Identification & Storage ---
-  collectionName: "cash_flow_statement", // MongoDB collection name
+  collectionName: "cash_flow_statements", // MongoDB collection name
   collectionIndexes: collectionIndexes, // Index key definitions (options handled elsewhere)
 
   // --- FMP API Fetching ---
@@ -111,7 +60,7 @@ export const cashFlowStatementConfig: GenericServiceConfig<
   uniqueKeyFields: ["symbol", "date"], // Fields defining a unique DB record for upserts
   mapRawToDoc: mapRawCashFlowStatementToDoc, // Function mapping FMP Raw -> DB structure
   mapDocToApi: mapDocToPartialApi, // Function mapping DB structure -> API response structure
-  listProjection: listProjection, // Projection for the getAll() list view (optional)
+  apiFieldOrder: cashFlowKeyOrder,
 
   // --- Behavior Modifiers for 'bySymbol' mode ---
   isSingleRecordPerSymbol: false, // FMP returns multiple historical records per symbol
