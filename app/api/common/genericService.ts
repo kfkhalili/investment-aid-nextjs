@@ -10,7 +10,7 @@ import {
   Document as MongoDocument,
   FindOptions,
 } from "mongodb";
-import { ensureCollection } from "@/api/ensureCollection"; // Adjust path as needed
+import { ensureCollection } from "@/lib/mongodb/ensureCollection"; // Adjust path as needed
 import { BaseDoc, GenericServiceConfig, FetchMode } from "./types";
 // Import the FILTERING version of the reordering helper
 import { reorderAndFilterObjectKeys } from "./mappers"; // Adjust path if needed (e.g. ./mappers)
@@ -165,10 +165,7 @@ export function createGenericService<
       actualUrl = `https://financialmodelingprep.com/api/${fmpBasePath}/${fmpPath}?${queryParams}`;
     }
     console.log(
-      `Workspaceing from FMP [${fetchMode}]: ${actualUrl.replace(
-        apiKey,
-        "***"
-      )}`
+      `Fetching from FMP [${fetchMode}]: ${actualUrl.replace(apiKey, "***")}`
     );
     const response = await fetch(actualUrl, { cache: "no-store" });
     // Process Response

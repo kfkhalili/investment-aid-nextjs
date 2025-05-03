@@ -1,4 +1,4 @@
-import { ensureCollection } from "@/api/ensureCollection";
+import { ensureCollection } from "@/lib/mongodb/ensureCollection";
 import { StockScreenerDoc } from "./types";
 
 interface StockScreenerRow {

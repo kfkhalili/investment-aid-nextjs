@@ -1,4 +1,4 @@
-import { ensureCollection } from "@/api/ensureCollection";
+import { ensureCollection } from "@/lib/mongodb/ensureCollection";
 import { CACHE_TTL_MS } from "./constants";
 import { fetchAndUpsertStock } from "./fetch";
 import { StockScreenerDoc } from "./types";

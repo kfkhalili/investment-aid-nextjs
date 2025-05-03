@@ -1,5 +1,5 @@
 import type { Collection, Document, IndexSpecification } from "mongodb";
-import { getDb } from "@/api/mongodb";
+import { getDb } from "@/lib/mongodb/db";
 
 export async function ensureCollection<T extends Document>(
   name: string,
