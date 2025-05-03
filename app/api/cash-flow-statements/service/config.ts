@@ -44,7 +44,7 @@ export const cashFlowStatementConfig: GenericServiceConfig<
   CashFlowStatement
 > = {
   // --- Core Identification & Storage ---
-  collectionName: "cash_flow_statement", // MongoDB collection name
+  collectionName: "cash_flow_statements", // MongoDB collection name
   collectionIndexes: collectionIndexes, // Index key definitions (options handled elsewhere)
 
   // --- FMP API Fetching ---

@@ -44,7 +44,7 @@ export const incomeStatementConfig: GenericServiceConfig<
   IncomeStatement
 > = {
   // --- Core Identification & Storage ---
-  collectionName: "income_statement", // MongoDB collection name
+  collectionName: "income_statements", // MongoDB collection name
   collectionIndexes: collectionIndexes, // Index key definitions (options handled elsewhere)
 
   // --- FMP API Fetching ---

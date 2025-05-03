@@ -39,7 +39,7 @@ export const balanceSheetStatementConfig: GenericServiceConfig<
   BalanceSheetStatement
 > = {
   // --- Core Identification & Storage ---
-  collectionName: "balance_sheet_statement", // MongoDB collection name
+  collectionName: "balance_sheet_statements", // MongoDB collection name
   collectionIndexes: collectionIndexes, // Index key definitions (options handled elsewhere)
 
   // --- FMP API Fetching ---
