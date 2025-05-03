@@ -10,9 +10,9 @@ import { NextResponse } from "next/server";
 import {
   getBalanceSheetStatementsForSymbol,
   getLatestBalanceSheetStatement,
-} from "@/api/balance-sheet-statement/service";
+} from "@/api/balance-sheet-statements/service";
 // 2. Import the API response type
-import type { BalanceSheetStatement } from "@/api/balance-sheet-statement/service";
+import type { BalanceSheetStatement } from "@/api/balance-sheet-statements/service";
 
 /**
  * Handles GET requests.

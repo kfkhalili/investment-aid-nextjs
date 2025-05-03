@@ -1,11 +1,10 @@
-// app/profiles/page.tsx  (SC)
-import { Table } from "@/components/Table";
-import { getProfiles, mapProfileDocToProfile } from "@/api/profiles/service";
+// app/profiles/page.tsx
+import { getAllProfiles } from "@/api/profiles/service";
+import { SmartTable } from "@/components/SmartTable";
 
 export const revalidate = 60;
 
 export default async function ProfilesPage() {
-  const rows = await getProfiles();
-  const data = rows.map(mapProfileDocToProfile);
-  return <Table data={data} />;
+  const data = await getAllProfiles();
+  return <SmartTable data={data} />;
 }
