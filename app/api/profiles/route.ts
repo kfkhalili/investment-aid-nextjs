@@ -6,9 +6,9 @@
 import { NextResponse } from "next/server";
 
 // 1. Import the specific service method for getting the list view
-import { getAllProfiles } from "./service"; // <-- Use the exported getAll function
+import { getAllProfiles } from "./service";
 // 2. Import the API response type
-import type { Profile } from "./service"; // <-- Import Profile type
+import type { Profile } from "./service";
 
 /**
  * Handles GET requests to fetch a list of all company profiles.

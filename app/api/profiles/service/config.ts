@@ -8,6 +8,7 @@ import {
   FetchMode,
   mapDocToPartialApi,
 } from "@/api/common"; // Import common types & mapper
+import { profileKeyOrder } from "./constants";
 
 // Import specific types and mappers for Profiles
 import {
@@ -29,54 +30,6 @@ const collectionIndexes: IndexSpecification[] = [
   { symbol: 1 },
   { modifiedAt: -1 },
 ];
-
-/**
- * Projection for the `getAll()` list view.
- * This version explicitly includes ALL fields from ProfileDoc.
- */
-const listProjection: { [K in keyof ProfileDoc]?: 1 } = {
-  // --- BaseDoc fields first for convention ---
-  _id: 1,
-  symbol: 1, // Matches FMP order start
-  modifiedAt: 1, // Standard BaseDoc field
-
-  // --- Fields in FMP API Order ---
-  price: 1,
-  marketCap: 1,
-  beta: 1,
-  lastDividend: 1,
-  range: 1,
-  change: 1,
-  changePercentage: 1,
-  volume: 1,
-  averageVolume: 1, // Assuming this name matches your ProfileDoc
-  companyName: 1,
-  currency: 1,
-  cik: 1,
-  isin: 1,
-  cusip: 1,
-  exchangeFullName: 1,
-  exchange: 1,
-  industry: 1,
-  website: 1,
-  description: 1,
-  ceo: 1,
-  sector: 1,
-  country: 1,
-  fullTimeEmployees: 1, // Stored as number in ProfileDoc
-  phone: 1,
-  address: 1,
-  city: 1,
-  state: 1,
-  zip: 1,
-  image: 1,
-  ipoDate: 1,
-  defaultImage: 1,
-  isEtf: 1,
-  isActivelyTrading: 1,
-  isAdr: 1,
-  isFund: 1,
-};
 
 /**
  * Configuration object passed to `createGenericService` to instantiate
@@ -104,7 +57,7 @@ export const profileConfig: GenericServiceConfig<
   uniqueKeyFields: ["symbol"],
   mapRawToDoc: mapRawProfileToDoc,
   mapDocToApi: mapDocToPartialApi,
-  listProjection: listProjection, // Use the projection including all fields
+  apiFieldOrder: profileKeyOrder,
 
   // --- Behavior Modifiers for 'bySymbol' mode ---
   isSingleRecordPerSymbol: true,

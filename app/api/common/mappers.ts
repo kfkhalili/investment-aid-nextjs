@@ -43,3 +43,38 @@ export const mapDocToPartialApi = <TDoc extends BaseDoc>(
 
   return apiObject;
 };
+
+/**
+ * Takes an object (potentially partial) and an array of ordered keys,
+ * returning a new partial object containing ONLY the keys specified in
+ * orderedKeys that also exist on the input object, in that specific order.
+ * This effectively filters and orders the object based on the provided keys.
+ *
+ * @template T The base type of the object (constrained to Record<string, unknown>).
+ * @param {Partial<T>} obj The input partial object (e.g., Partial<Profile>).
+ * @param {ReadonlyArray<keyof T>} orderedKeys An array of keys defining the desired output fields and their order.
+ * @returns {Partial<T>} A new partial object with specified keys ordered and filtered.
+ */
+export function reorderAndFilterObjectKeys<T extends Record<string, unknown>>(
+  obj: Partial<T>,
+  orderedKeys: ReadonlyArray<keyof T> // Use ReadonlyArray for input safety
+): Partial<T> {
+  // Initialize an empty object that will conform to Partial<T>
+  const newObj: Partial<T> = {};
+
+  // Iterate through the desired keys IN ORDER
+  for (const key of orderedKeys) {
+    // Check if the input object actually has this property as its own
+    // (Handles cases where obj is Partial<T> or key might not exist)
+    if (Object.prototype.hasOwnProperty.call(obj, key)) {
+      // If the key exists on the input, copy its value to the new object.
+      // Assigning 'unknown' (from obj[key]) to Partial<T>[key] is type-safe.
+      newObj[key] = obj[key];
+    }
+    // If the key from orderedKeys doesn't exist in obj, it's simply skipped.
+  }
+
+  // The resulting object contains only the keys from orderedKeys that were
+  // found in the original object, in the specified order.
+  return newObj;
+}
