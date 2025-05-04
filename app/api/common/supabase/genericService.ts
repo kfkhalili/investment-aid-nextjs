@@ -29,7 +29,7 @@ export function createGenericSupabaseService<
   RawType,
   RowType extends BaseRow,
   // Constrain ApiType for keyof usage and structure compatibility (optional id)
-  ApiType extends Record<string, unknown> & { id?: string }
+  ApiType extends { id?: string }
 >(config: GenericSupabaseServiceConfig<RawType, RowType, ApiType>) {
   // --- Config Destructuring & Defaults ---
   const {

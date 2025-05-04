@@ -1,5 +1,5 @@
 /* ──────────────────────────────────────────────────────────────────────
- * src/api/balance-sheet-statement/service/index.ts
+ * src/api/balance-sheet-statements/service/index.ts
  * Instantiates and exports the balance sheet service methods.
  * ---------------------------------------------------------------------*/
 

@@ -1,6 +1,6 @@
 /* ──────────────────────────────────────────────────────────────────────
- * app/api/balance-sheet-statement/route.ts
- * Handler for GET requests to /api/balance-sheet-statement
+ * app/api/balance-sheet-statements/route.ts
+ * Handler for GET requests to /api/balance-sheet-statements
  * Retrieves a list view of balance sheet statements.
  * ---------------------------------------------------------------------*/
 import { NextResponse } from "next/server";

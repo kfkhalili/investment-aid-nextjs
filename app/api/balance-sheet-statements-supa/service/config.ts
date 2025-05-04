@@ -1,5 +1,5 @@
 /* ──────────────────────────────────────────────────────────────────────
- * src/api/balance-sheet-statement/service/config.ts (Supabase Version)
+ * src/api/balance-sheet-statements/service/config.ts (Supabase Version)
  * Configuration for the Balance Sheet Statement service using Supabase.
  * ---------------------------------------------------------------------*/
 // Removed Mongo IndexSpecification import

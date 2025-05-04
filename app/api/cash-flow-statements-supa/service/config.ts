@@ -1,5 +1,5 @@
 /* ──────────────────────────────────────────────────────────────────────
- * src/api/cash-flow-statement/service/config.ts (Supabase Version)
+ * src/api/cash-flow-statements/service/config.ts (Supabase Version)
  * Configuration for the Cash Flow Statement service using Supabase.
  * ---------------------------------------------------------------------*/
 // Removed Mongo IndexSpecification import

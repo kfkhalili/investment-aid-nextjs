@@ -1,5 +1,5 @@
 /* ──────────────────────────────────────────────────────────────────────
- * src/api/balance-sheet-statement/service/config.ts
+ * src/api/balance-sheet-statements/service/config.ts
  * Configuration for the Balance Sheet Statement service.
  * ---------------------------------------------------------------------*/
 import { IndexSpecification } from "mongodb"; // Use the type from your mongodb.d.ts

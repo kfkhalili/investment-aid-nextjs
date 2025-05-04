@@ -1,5 +1,5 @@
 /* ──────────────────────────────────────────────────────────────────────
- * src/api/cash-flow-statement/service/constants.ts (Supabase Version)
+ * src/api/cash-flow-statements/service/constants.ts (Supabase Version)
  * Constants for the Cash Flow Statement service.
  * ---------------------------------------------------------------------*/
 

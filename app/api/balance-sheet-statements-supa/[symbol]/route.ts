@@ -1,5 +1,5 @@
 /* ──────────────────────────────────────────────────────────────────────
- * app/api/balance-sheet-statement/[symbol]/route.ts
+ * app/api/balance-sheet-statements/[symbol]/route.ts
  * Handler for GET requests for a specific symbol.
  * Ensures profile exists first, then retrieves all OR the latest statement(s).
  * Use query parameter ?latest=true to get only the latest.
@@ -42,7 +42,7 @@ export async function GET(
   const getLatestOnly = searchParams.get("latest") === "true"; // Check if ?latest=true
 
   console.log(
-    `GET /api/balance-sheet-statement/${symbol} called ${
+    `GET /api/balance-sheet-statements/${symbol} called ${
       getLatestOnly ? " (latest only)" : ""
     }`
   );

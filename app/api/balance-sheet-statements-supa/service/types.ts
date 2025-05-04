@@ -1,6 +1,7 @@
 /* ──────────────────────────────────────────────────────────────────────
- * src/api/balance-sheet-statement/service/types.ts (Supabase Version)
+ * src/api/balance-sheet-statements/service/types.ts (Supabase Version)
  * Type definitions and mappers for Balance Sheet Statement data using Supabase.
+ * Includes rounding for BIGINT fields.
  * ---------------------------------------------------------------------*/
 import type { Database } from "@/lib/supabase/database.types"; // Import generated DB types
 
@@ -10,13 +11,13 @@ export type BalanceSheetStatementRow =
 
 // 1. Interface for Raw Data from FMP API (camelCase, added nullability)
 export interface RawBalanceSheetStatement {
-  date: string | null; // Potentially null from API? Add check/default
+  date: string | null;
   symbol: string;
   reportedCurrency: string | null;
   cik: string | null;
   fillingDate: string | null;
   acceptedDate: string | null;
-  calendarYear: string | null; // FMP often sends year as string
+  calendarYear: string | null;
   period: string;
   cashAndCashEquivalents: number | null;
   shortTermInvestments: number | null;
@@ -31,7 +32,7 @@ export interface RawBalanceSheetStatement {
   goodwillAndIntangibleAssets: number | null;
   longTermInvestments: number | null;
   taxAssets: number | null;
-  otherNonCurrentAssets: number | null;
+  otherNonCurrentAssets: number | null; // Source of one error
   totalNonCurrentAssets: number | null;
   otherAssets: number | null;
   totalAssets: number | null;
@@ -47,7 +48,7 @@ export interface RawBalanceSheetStatement {
   otherNonCurrentLiabilities: number | null;
   totalNonCurrentLiabilities: number | null;
   otherLiabilities: number | null;
-  capitalLeaseObligations?: number | null; // Keep optional and nullable
+  capitalLeaseObligations?: number | null; // Optional in Raw, Nullable in DB
   totalLiabilities: number | null;
   preferredStock: number | null;
   commonStock: number | null;
@@ -77,10 +78,24 @@ export interface BalanceSheetStatement
 
 // --- Mapping Function (Raw -> Row Structure for DB) ---
 
+// Helper function to round number or return 0 (for NOT NULL BIGINT columns)
+const roundToBigIntOrZero = (value: number | null | undefined): number => {
+  // Round to nearest integer, default to 0 if input is null/undefined
+  return Math.round(value ?? 0);
+};
+// Helper function to round number or return null (for NULLABLE BIGINT columns)
+const roundToBigIntOrNull = (
+  value: number | null | undefined
+): number | null => {
+  // If input is null/undefined, return null, otherwise round to nearest integer
+  if (value === null || value === undefined) return null;
+  return Math.round(value);
+};
+
 /**
  * Maps raw FMP API Balance Sheet data (camelCase) to the structure
  * needed for DB storage (snake_case), excluding id and timestamps.
- * Handles defaults (0 for numbers, null for strings/optional numbers).
+ * Handles defaults, type conversions, and rounding for BIGINT fields.
  */
 export const mapRawBalanceSheetToRow = (
   raw: RawBalanceSheetStatement
@@ -102,65 +117,88 @@ export const mapRawBalanceSheetToRow = (
   // Map RawBalanceSheetStatement (camelCase) keys to BalanceSheetStatementRow (snake_case) keys
   return {
     // Identifiers / Metadata (map and ensure NOT NULL if required by DB)
-    date: ensureDateString(raw.date), // REQUIRED
-    symbol: raw.symbol, // REQUIRED
-    reported_currency: raw.reportedCurrency ?? "USD", // REQUIRED
+    date: ensureDateString(raw.date),
+    symbol: raw.symbol,
+    reported_currency: raw.reportedCurrency ?? "USD",
     cik: raw.cik ?? null,
-    filling_date: ensureDateString(raw.fillingDate), // REQUIRED
-    accepted_date: ensureTimestampString(raw.acceptedDate), // REQUIRED
-    calendar_year: parseYear(raw.calendarYear), // REQUIRED
-    period: raw.period, // REQUIRED
+    filling_date: ensureDateString(raw.fillingDate),
+    accepted_date: ensureTimestampString(raw.acceptedDate),
+    calendar_year: parseYear(raw.calendarYear), // Maps to SMALLINT
+    period: raw.period,
 
-    // Map financial numbers, defaulting to 0 or null
-    cash_and_cash_equivalents: raw.cashAndCashEquivalents ?? 0,
-    short_term_investments: raw.shortTermInvestments ?? 0,
-    cash_and_short_term_investments: raw.cashAndShortTermInvestments ?? 0,
-    net_receivables: raw.netReceivables ?? 0,
-    inventory: raw.inventory ?? 0,
-    other_current_assets: raw.otherCurrentAssets ?? 0,
-    total_current_assets: raw.totalCurrentAssets ?? 0,
-    property_plant_equipment_net: raw.propertyPlantEquipmentNet ?? 0,
-    goodwill: raw.goodwill ?? 0,
-    intangible_assets: raw.intangibleAssets ?? 0,
-    goodwill_and_intangible_assets: raw.goodwillAndIntangibleAssets ?? 0,
-    long_term_investments: raw.longTermInvestments ?? 0,
-    tax_assets: raw.taxAssets ?? 0,
-    other_non_current_assets: raw.otherNonCurrentAssets ?? 0,
-    total_non_current_assets: raw.totalNonCurrentAssets ?? 0,
-    other_assets: raw.otherAssets ?? 0,
-    total_assets: raw.totalAssets ?? 0,
-    account_payables: raw.accountPayables ?? 0, // Note snake_case here matches DDL
-    short_term_debt: raw.shortTermDebt ?? 0,
-    tax_payables: raw.taxPayables ?? 0,
-    deferred_revenue: raw.deferredRevenue ?? 0,
-    other_current_liabilities: raw.otherCurrentLiabilities ?? 0,
-    total_current_liabilities: raw.totalCurrentLiabilities ?? 0,
-    long_term_debt: raw.longTermDebt ?? 0,
-    deferred_revenue_non_current: raw.deferredRevenueNonCurrent ?? 0,
-    deferred_tax_liabilities_non_current:
-      raw.deferredTaxLiabilitiesNonCurrent ?? 0,
-    other_non_current_liabilities: raw.otherNonCurrentLiabilities ?? 0,
-    total_non_current_liabilities: raw.totalNonCurrentLiabilities ?? 0,
-    other_liabilities: raw.otherLiabilities ?? 0,
-    // Handle optional field - store null if missing/null/undefined
-    capital_lease_obligations: raw.capitalLeaseObligations ?? null,
-    total_liabilities: raw.totalLiabilities ?? 0,
-    preferred_stock: raw.preferredStock ?? 0,
-    common_stock: raw.commonStock ?? 0,
-    retained_earnings: raw.retainedEarnings ?? 0,
-    accumulated_other_comprehensive_income_loss:
-      raw.accumulatedOtherComprehensiveIncomeLoss ?? 0,
-    othertotal_stockholders_equity: raw.othertotalStockholdersEquity ?? 0,
-    total_stockholders_equity: raw.totalStockholdersEquity ?? 0,
-    total_equity: raw.totalEquity ?? 0,
-    total_liabilities_and_stockholders_equity:
-      raw.totalLiabilitiesAndStockholdersEquity ?? 0,
-    minority_interest: raw.minorityInterest ?? 0,
-    total_liabilities_and_total_equity: raw.totalLiabilitiesAndTotalEquity ?? 0,
-    total_investments: raw.totalInvestments ?? 0,
-    total_debt: raw.totalDebt ?? 0,
-    net_debt: raw.netDebt ?? 0,
+    // --- Apply rounding using helpers for ALL BIGINT columns ---
+    cash_and_cash_equivalents: roundToBigIntOrZero(raw.cashAndCashEquivalents),
+    short_term_investments: roundToBigIntOrZero(raw.shortTermInvestments),
+    cash_and_short_term_investments: roundToBigIntOrZero(
+      raw.cashAndShortTermInvestments
+    ),
+    net_receivables: roundToBigIntOrZero(raw.netReceivables),
+    inventory: roundToBigIntOrZero(raw.inventory),
+    other_current_assets: roundToBigIntOrZero(raw.otherCurrentAssets),
+    total_current_assets: roundToBigIntOrZero(raw.totalCurrentAssets),
+    property_plant_equipment_net: roundToBigIntOrZero(
+      raw.propertyPlantEquipmentNet
+    ),
+    goodwill: roundToBigIntOrZero(raw.goodwill),
+    intangible_assets: roundToBigIntOrZero(raw.intangibleAssets),
+    goodwill_and_intangible_assets: roundToBigIntOrZero(
+      raw.goodwillAndIntangibleAssets
+    ),
+    long_term_investments: roundToBigIntOrZero(raw.longTermInvestments),
+    tax_assets: roundToBigIntOrZero(raw.taxAssets),
+    other_non_current_assets: roundToBigIntOrZero(raw.otherNonCurrentAssets), // Fixed
+    total_non_current_assets: roundToBigIntOrZero(raw.totalNonCurrentAssets),
+    other_assets: roundToBigIntOrZero(raw.otherAssets),
+    total_assets: roundToBigIntOrZero(raw.totalAssets),
+    account_payables: roundToBigIntOrZero(raw.accountPayables), // Note snake_case here matches DDL
+    short_term_debt: roundToBigIntOrZero(raw.shortTermDebt),
+    tax_payables: roundToBigIntOrZero(raw.taxPayables),
+    deferred_revenue: roundToBigIntOrZero(raw.deferredRevenue),
+    other_current_liabilities: roundToBigIntOrZero(raw.otherCurrentLiabilities),
+    total_current_liabilities: roundToBigIntOrZero(raw.totalCurrentLiabilities),
+    long_term_debt: roundToBigIntOrZero(raw.longTermDebt),
+    deferred_revenue_non_current: roundToBigIntOrZero(
+      raw.deferredRevenueNonCurrent
+    ),
+    deferred_tax_liabilities_non_current: roundToBigIntOrZero(
+      raw.deferredTaxLiabilitiesNonCurrent
+    ),
+    other_non_current_liabilities: roundToBigIntOrZero(
+      raw.otherNonCurrentLiabilities
+    ),
+    total_non_current_liabilities: roundToBigIntOrZero(
+      raw.totalNonCurrentLiabilities
+    ),
+    other_liabilities: roundToBigIntOrZero(raw.otherLiabilities),
+    // Use OrNull version for optional field mapped to a NULLABLE BIGINT column
+    capital_lease_obligations: roundToBigIntOrNull(raw.capitalLeaseObligations),
+    total_liabilities: roundToBigIntOrZero(raw.totalLiabilities),
+    preferred_stock: roundToBigIntOrZero(raw.preferredStock),
+    common_stock: roundToBigIntOrZero(raw.commonStock),
+    retained_earnings: roundToBigIntOrZero(raw.retainedEarnings),
+    accumulated_other_comprehensive_income_loss: roundToBigIntOrZero(
+      raw.accumulatedOtherComprehensiveIncomeLoss
+    ),
+    othertotal_stockholders_equity: roundToBigIntOrZero(
+      raw.othertotalStockholdersEquity
+    ),
+    total_stockholders_equity: roundToBigIntOrZero(raw.totalStockholdersEquity),
+    total_equity: roundToBigIntOrZero(raw.totalEquity),
+    total_liabilities_and_stockholders_equity: roundToBigIntOrZero(
+      raw.totalLiabilitiesAndStockholdersEquity
+    ),
+    minority_interest: roundToBigIntOrZero(raw.minorityInterest),
+    total_liabilities_and_total_equity: roundToBigIntOrZero(
+      raw.totalLiabilitiesAndTotalEquity
+    ),
+    total_investments: roundToBigIntOrZero(raw.totalInvestments),
+    total_debt: roundToBigIntOrZero(raw.totalDebt),
+    net_debt: roundToBigIntOrZero(raw.netDebt),
+
+    // Links (remain nullable strings)
     link: raw.link ?? null,
     final_link: raw.finalLink ?? null,
   };
 };
+
+// Note: mapRowToApi is handled by the common mapper

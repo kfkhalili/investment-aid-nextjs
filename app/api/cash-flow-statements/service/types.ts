@@ -1,5 +1,5 @@
 /* ──────────────────────────────────────────────────────────────────────
- * src/api/cash-flow-statement/service/types.ts
+ * src/api/cash-flow-statements/service/types.ts
  * Type definitions and mappers for Cash Flow Statement data.
  * ---------------------------------------------------------------------*/
 import { BaseDoc } from "@/api/common"; // Adjust import path as needed

@@ -1,5 +1,5 @@
 /* ──────────────────────────────────────────────────────────────────────
- * src/api/balance-sheet-statement/service/index.ts (Supabase Version)
+ * src/api/balance-sheet-statements/service/index.ts (Supabase Version)
  * Instantiates and exports the Supabase-based balance sheet service methods.
  * ---------------------------------------------------------------------*/
 

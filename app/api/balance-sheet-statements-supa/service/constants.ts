@@ -1,5 +1,5 @@
 /* ──────────────────────────────────────────────────────────────────────
- * src/api/balance-sheet-statement/service/constants.ts (Supabase Version)
+ * src/api/balance-sheet-statements/service/constants.ts (Supabase Version)
  * Constants for the Balance Sheet Statement service.
  * ---------------------------------------------------------------------*/
 

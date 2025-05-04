@@ -1,5 +1,5 @@
 /* ──────────────────────────────────────────────────────────────────────
- * src/api/cash-flow-statement/service/index.ts (Supabase Version)
+ * src/api/cash-flow-statements/service/index.ts (Supabase Version)
  * Instantiates and exports the Supabase-based cash flow statement service methods.
  * ---------------------------------------------------------------------*/
 

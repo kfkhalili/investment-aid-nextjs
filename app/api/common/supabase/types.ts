@@ -48,7 +48,7 @@ export interface GenericSupabaseServiceConfig<
   /**
    * Specifies how the 'symbol' should be included in the FMP URL
    * when fetchMode is 'BySymbol'. Defaults to 'path' in the service if omitted.
-   * - 'path': Append symbol to the path (e.g., /api/v3/income-statement/AAPL).
+   * - 'path': Append symbol to the path (e.g., /api/v3/income-statements/AAPL).
    * - 'param': Add symbol as a query parameter (e.g., /api/stable/profile?symbol=AAPL).
    */
   fmpSymbolLocation?: "path" | "param";

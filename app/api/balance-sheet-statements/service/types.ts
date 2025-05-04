@@ -1,5 +1,5 @@
 /* ──────────────────────────────────────────────────────────────────────
- * src/api/balance-sheet-statement/service/types.ts
+ * src/api/balance-sheet-statements/service/types.ts
  * ---------------------------------------------------------------------*/
 import { BaseDoc } from "@/api/common/";
 
