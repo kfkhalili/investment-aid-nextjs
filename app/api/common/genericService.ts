@@ -32,7 +32,7 @@ function getFmpApiKey(): string {
 export function createGenericService<
   RawType,
   DocType extends BaseDoc & MongoDocument,
-  ApiType extends Record<string, unknown> // Constrained for keyof usage
+  ApiType
 >(config: GenericServiceConfig<RawType, DocType, ApiType>) {
   // --- Config Destructuring & Defaults ---
   const {
@@ -148,7 +148,7 @@ export function createGenericService<
     if (fetchMode === FetchMode.BySymbol) {
       if (!symbol)
         throw new Error(
-          `Workspace Error (${collectionName}): Symbol required for fetchMode='bySymbol'.`
+          `Fetch Error (${collectionName}): Symbol required for fetchMode='bySymbol'.`
         );
       if (fmpPath === "profile" || fmpPath === "company/profile") {
         const queryParams = new URLSearchParams({

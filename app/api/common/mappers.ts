@@ -50,12 +50,12 @@ export const mapDocToPartialApi = <TDoc extends BaseDoc>(
  * orderedKeys that also exist on the input object, in that specific order.
  * This effectively filters and orders the object based on the provided keys.
  *
- * @template T The base type of the object (constrained to Record<string, unknown>).
+ * @template T The base type of the object.
  * @param {Partial<T>} obj The input partial object (e.g., Partial<Profile>).
  * @param {ReadonlyArray<keyof T>} orderedKeys An array of keys defining the desired output fields and their order.
  * @returns {Partial<T>} A new partial object with specified keys ordered and filtered.
  */
-export function reorderAndFilterObjectKeys<T extends Record<string, unknown>>(
+export function reorderAndFilterObjectKeys<T>(
   obj: Partial<T>,
   orderedKeys: ReadonlyArray<keyof T> // Use ReadonlyArray for input safety
 ): Partial<T> {
