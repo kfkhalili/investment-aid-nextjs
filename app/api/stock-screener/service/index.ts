@@ -4,7 +4,7 @@
  * ---------------------------------------------------------------------*/
 
 // 1. Import the generic service creator function for SUPABASE
-import { createGenericSupabaseService } from "@/api/common/supabase"; // Adjust path as needed
+import { createGenericSupabaseService } from "@/api/common/supabase";
 
 // 2. Import the specific configuration for stock screener (Supabase version)
 import { stockScreenerConfig } from "./config";

@@ -5,7 +5,7 @@
 import type { HistoricalPriceApiItem } from "./types"; // Import API type if defining order
 
 /** Cache Time-To-Live: How long fetched data is considered fresh before re-fetching. */
-// Example: 1 day for historical prices (adjust as needed)
+// Example: 1 day for historical prices
 export const CACHE_TTL_MS = 1000 * 60 * 60 * 24;
 
 /**

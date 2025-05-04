@@ -4,7 +4,7 @@
  * (Profile dependency check moved to the API route handler)
  * ---------------------------------------------------------------------*/
 import { SupabaseClient, PostgrestError } from "@supabase/supabase-js";
-import { getSupabaseServerClient } from "@/lib/supabase/serverClient"; // Adjust path
+import { getSupabaseServerClient } from "@/lib/supabase/serverClient";
 // Removed profile service import
 import {
   RawHistoricalPriceResponse,

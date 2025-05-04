@@ -7,11 +7,11 @@
  * ---------------------------------------------------------------------*/
 import { SupabaseClient, PostgrestError } from "@supabase/supabase-js";
 // Import the Supabase client getter you created
-import { getSupabaseServerClient } from "@/lib/supabase/serverClient"; // Adjust path as needed
+import { getSupabaseServerClient } from "@/lib/supabase/serverClient";
 // Import common types and helpers for Supabase
 import { BaseRow, GenericSupabaseServiceConfig, FetchMode } from "./types";
 // Import the FILTERING version of the reordering helper
-import { reorderAndFilterObjectKeys } from "./mappers"; // Adjust path if needed
+import { reorderAndFilterObjectKeys } from "./mappers";
 
 // Helper function to safely get the FMP API key
 function getFmpApiKey(): string {
@@ -291,7 +291,7 @@ export function createGenericSupabaseService<
           const key = sortByFieldForLatest as keyof ApiType;
           const valA = a[key] ?? ""; // Use nullish coalescing for safer comparison
           const valB = b[key] ?? "";
-          // Basic descending sort (adjust if numeric/date specific needed)
+          // Basic descending sort
           if (valA < valB) return 1;
           if (valA > valB) return -1;
           return 0;

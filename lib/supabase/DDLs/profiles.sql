@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     -- Core identifier: Still essential, make it unique and indexed
     symbol              TEXT NOT NULL UNIQUE,
 
-    -- Profile Data Fields (Adjust types based on precision needs if necessary)
+    -- Profile Data Fields
     price               DOUBLE PRECISION, -- Suitable for floating-point financial values
     market_cap          BIGINT,
     beta                DOUBLE PRECISION,
