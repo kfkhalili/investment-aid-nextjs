@@ -6,10 +6,10 @@
 import { NextResponse } from "next/server";
 
 // 1. Import the specific service method for getting the list view
-import { getStockScreenerResults } from "./service"; // Adjust path
+import { getStockScreenerResults } from "./service";
 
 // 2. Import the API response type
-import type { StockScreenerItem } from "./service"; // Supabase version
+import type { StockScreenerItem } from "./service";
 
 /**
  * Handles GET requests to fetch the latest stock screener results.

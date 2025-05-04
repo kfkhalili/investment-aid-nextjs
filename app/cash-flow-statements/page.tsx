@@ -1,5 +1,5 @@
 // app/balance-sheet-statements/page.tsx
-import { getAllCashFlowStatements } from "@/api/cash-flow-statements-supa/service";
+import { getAllCashFlowStatements } from "@/api/cash-flow-statements/service";
 import { SmartTable } from "@/components/SmartTable";
 
 export const revalidate = 60;

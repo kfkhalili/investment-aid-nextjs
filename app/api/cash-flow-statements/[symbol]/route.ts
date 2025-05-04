@@ -7,7 +7,7 @@
 import { NextResponse } from "next/server";
 
 // 1. Import service methods for Profile AND Cash Flow Statement
-import { getProfile } from "@/api/profiles-supa/service";
+import { getProfile } from "@/api/profiles/service";
 import {
   getCashFlowStatementsForSymbol, // Use correct cash flow function
   getLatestCashFlowStatement, // Use correct cash flow function

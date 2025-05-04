@@ -329,6 +329,71 @@ export type Database = {
         }
         Relationships: []
       }
+      historical_prices: {
+        Row: {
+          adj_close: number | null
+          change: number | null
+          change_over_time: number | null
+          change_percent: number | null
+          close: number | null
+          date: string
+          high: number | null
+          id: string
+          label: string | null
+          low: number | null
+          modified_at: string
+          open: number | null
+          symbol: string
+          unadjusted_volume: number | null
+          volume: number | null
+          vwap: number | null
+        }
+        Insert: {
+          adj_close?: number | null
+          change?: number | null
+          change_over_time?: number | null
+          change_percent?: number | null
+          close?: number | null
+          date: string
+          high?: number | null
+          id?: string
+          label?: string | null
+          low?: number | null
+          modified_at?: string
+          open?: number | null
+          symbol: string
+          unadjusted_volume?: number | null
+          volume?: number | null
+          vwap?: number | null
+        }
+        Update: {
+          adj_close?: number | null
+          change?: number | null
+          change_over_time?: number | null
+          change_percent?: number | null
+          close?: number | null
+          date?: string
+          high?: number | null
+          id?: string
+          label?: string | null
+          low?: number | null
+          modified_at?: string
+          open?: number | null
+          symbol?: string
+          unadjusted_volume?: number | null
+          volume?: number | null
+          vwap?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_historical_price_symbol"
+            columns: ["symbol"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["symbol"]
+          },
+        ]
+      }
       income_statements: {
         Row: {
           accepted_date: string

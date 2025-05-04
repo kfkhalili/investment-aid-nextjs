@@ -1,7 +1,7 @@
 // /lib/supabase/serverClient.ts (example path)
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
-// Import generated Database type (adjust path as needed)
+// Import generated Database type
 // This provides strong typing for table/column names and query results.
 import type { Database } from "./database.types";
 

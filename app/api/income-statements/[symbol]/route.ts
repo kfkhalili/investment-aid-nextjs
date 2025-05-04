@@ -7,7 +7,7 @@
 import { NextResponse } from "next/server";
 
 // 1. Import service methods for BOTH profile and income statement
-import { getProfile } from "@/api/profiles-supa/service";
+import { getProfile } from "@/api/profiles/service";
 import {
   getIncomeStatementsForSymbol,
   getLatestIncomeStatement,

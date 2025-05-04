@@ -7,7 +7,7 @@
 import type { StockScreenerItem } from "./types";
 
 /** Cache Time-To-Live: How long fetched data is considered fresh before re-fetching. */
-// Example: 4 hours for screener data (adjust as needed)
+// Example: 4 hours for screener data
 export const CACHE_TTL_MS = 1000 * 60 * 60 * 4;
 
 /**
