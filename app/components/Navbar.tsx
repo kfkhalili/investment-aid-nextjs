@@ -15,6 +15,7 @@ import AuthControls from "@/components/AuthControls";
 
 /** main nav links */
 const nav = [
+  { name: "Screener", href: "/screener" },
   { name: "Profiles", href: "/profiles" },
   { name: "Balance Sheet Statements", href: "/balance-sheet-statements" },
   { name: "Income Statements", href: "/income-statements" },
