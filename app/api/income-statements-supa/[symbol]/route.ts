@@ -1,41 +1,41 @@
 /* ──────────────────────────────────────────────────────────────────────
  * app/api/income-statements/[symbol]/route.ts
- * Handler for GET requests to /api/income-statements/[symbol]
- * Retrieves all OR the latest annual income statement(s) for a specific symbol.
+ * Handler for GET requests for a specific symbol.
+ * Ensures profile exists first, then retrieves all OR the latest statement(s).
  * Use query parameter ?latest=true to get only the latest.
  * ---------------------------------------------------------------------*/
 import { NextResponse } from "next/server";
 
-// 1. Import BOTH relevant service methods
+// 1. Import service methods for BOTH profile and income statement
+import { getProfile } from "@/api/profiles-supa/service";
 import {
   getIncomeStatementsForSymbol,
-  getLatestIncomeStatement, // Import getOne equivalent
-} from "../service";
+  getLatestIncomeStatement,
+} from "../service"; // Adjust path as needed (ensure this points to SUPABASE service index)
+
 // 2. Import the API response type
-import type { IncomeStatement } from "../service";
+import type { IncomeStatement } from "../service"; // Should be Supabase version
 
 /**
- * Handles GET requests.
+ * Handles GET requests for a specific symbol.
  * Fetches all statements by default.
  * Fetches only the latest statement if query param `latest=true` is present.
  */
 export async function GET(
   request: Request, // Use the request object to access URL
-  { params }: { params: Promise<{ symbol: string }> }
+  // Correctly type params for App Router dynamic segments
+  { params }: { params: { symbol: string } }
 ): Promise<
   NextResponse<
     Partial<IncomeStatement> | Partial<IncomeStatement>[] | { error: string }
   >
 > {
-  // Unified return type
+  // Get and uppercase the symbol from the route parameters
+  const symbol = params.symbol?.toUpperCase();
 
-  // Use the corrected pattern for accessing and transforming params safely with const
-  const { symbol: rawSymbol } = await params;
-  const symbol = rawSymbol?.toUpperCase();
-
-  // --- Check for query parameter ---
+  // Check for query parameter
   const { searchParams } = new URL(request.url);
-  const getLatestOnly = searchParams.get("latest") === "true"; // Check if ?latest=true
+  const getLatestOnly = searchParams.get("latest") === "true";
 
   console.log(
     `GET /api/income-statements/${symbol} called ${
@@ -46,20 +46,36 @@ export async function GET(
   if (!symbol) {
     return NextResponse.json(
       { error: "Symbol parameter is missing or invalid." },
-      { status: 400 } // Bad Request
+      { status: 400 }
     );
   }
 
   try {
-    // Declare data variable type based on the unified response possibilities
+    // --- Step 1: Ensure Profile Exists (for Foreign Key Constraint) ---
+    console.log(`Ensuring profile exists for ${symbol}...`);
+    const profileData = await getProfile(symbol);
+
+    // If profile doesn't exist after fetch attempt, the symbol might be invalid/unsupported
+    if (!profileData) {
+      console.log(`Profile dependency not found for symbol: ${symbol}`);
+      return NextResponse.json(
+        {
+          error: `Data (or underlying profile) not found for symbol ${symbol}.`,
+        },
+        { status: 404 } // Not Found, as the symbol seems invalid
+      );
+    }
+    console.log(`Profile check complete for ${symbol}.`);
+    // --- End Step 1 ---
+
+    // --- Step 2: Fetch Income Statement Data ---
     let data: Partial<IncomeStatement> | Partial<IncomeStatement>[] | null;
 
     if (getLatestOnly) {
       // --- Fetch Only Latest ---
-      console.log(`Fetching latest income statement for ${symbol}...`);
+      console.log(`Workspaceing latest income statement for ${symbol}...`);
       data = await getLatestIncomeStatement(symbol); // Calls service.getOne
 
-      // Handle case where the single latest record is not found (service.getOne returns null)
       if (!data) {
         console.log(`Latest income statement not found for symbol: ${symbol}`);
         return NextResponse.json(
@@ -69,27 +85,27 @@ export async function GET(
           { status: 404 }
         );
       }
-      // 'data' is type IncomeStatement here
+      // data is Partial<IncomeStatement>
     } else {
       // --- Fetch All History ---
-      console.log(`Fetching all income statements for ${symbol}...`);
+      console.log(`Workspaceing all income statements for ${symbol}...`);
       data = await getIncomeStatementsForSymbol(symbol); // Calls service.getAllForSymbol
 
-      // If getAllForSymbol returns empty array (after ensuring freshness), treat as 404
-      if (data.length === 0) {
-        console.log(`No income statement history found for symbol: ${symbol}`);
-        return NextResponse.json(
-          { error: `Income statement data not found for symbol ${symbol}` },
-          { status: 404 }
-        );
-      }
-      // 'data' is type IncomeStatement[] here
+      // Return 200 OK with empty array if history exists but is empty for this symbol
+      // (Don't return 404 here unless getAllForSymbol throws a specific 'not found' error)
+      // if (data.length === 0) {
+      //   console.log(`No income statement history found for symbol: ${symbol}`);
+      //   return NextResponse.json(
+      //     { error: `Income statement data not found for symbol ${symbol}` },
+      //     { status: 404 }
+      //   );
+      // }
+      // data is Partial<IncomeStatement>[]
     }
 
-    // Return the data (either single object or array)
+    // Return the data (either single object or array, both potentially partial)
     return NextResponse.json(data, { status: 200 });
   } catch (error) {
-    // Log the error for server-side debugging
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
     console.error(
@@ -107,14 +123,16 @@ export async function GET(
     ) {
       return NextResponse.json(
         { error: `Income statement data not found for symbol ${symbol}.` },
-        { status: 404 } // Not Found
+        { status: 404 }
       );
     }
+    // Don't specifically check for FK error here, as the profile check should prevent it.
+    // If it still happens, it indicates another issue.
 
-    // Return a generic server error response for other issues
+    // Return a generic server error response
     return NextResponse.json(
       { error: `Could not load income statements for symbol ${symbol}.` },
-      { status: 500 } // Internal Server Error
+      { status: 500 }
     );
   }
 }
