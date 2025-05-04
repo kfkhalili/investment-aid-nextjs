@@ -1,5 +1,5 @@
 // app/income-statements/page.tsx
-import { getAllIncomeStatements } from "@/api/income-statements/service";
+import { getAllIncomeStatements } from "@/api/income-statements-supa/service";
 import { SmartTable } from "@/components/SmartTable";
 
 export const revalidate = 60;
