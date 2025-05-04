@@ -327,7 +327,15 @@ export type Database = {
           stock_based_compensation?: number | null
           symbol?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_cash_flow_symbol"
+            columns: ["symbol"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["symbol"]
+          },
+        ]
       }
       historical_prices: {
         Row: {

@@ -6,8 +6,8 @@
 import {
   GenericSupabaseServiceConfig, // Import Supabase config type
   FetchMode,
-} from "@/api/common/supabase"; // Adjust path for common Supabase types
-import { mapRowToPartialApi } from "@/api/common/supabase"; // Import common Supabase mapper
+} from "@/lib/common/supabase"; // Adjust path for common Supabase types
+import { mapRowToPartialApi } from "@/lib/common/supabase"; // Import common Supabase mapper
 import { balanceSheetKeyOrder, CACHE_TTL_MS } from "./constants"; // Import constants (ensure balanceSheetKeyOrder uses snake_case)
 
 // Import specific types and mappers for Balance Sheets (Supabase version)

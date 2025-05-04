@@ -4,7 +4,7 @@
  * ---------------------------------------------------------------------*/
 
 // 1. Import the generic service creator function for SUPABASE
-import { createGenericSupabaseService } from "@/api/common/supabase"; // Adjust path as needed
+import { createGenericSupabaseService } from "@/lib/common/supabase"; // Adjust path as needed
 
 // 2. Import the specific configuration for income statements (Supabase version)
 import { incomeStatementConfig } from "./config";

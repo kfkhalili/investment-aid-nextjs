@@ -6,8 +6,8 @@
 import {
   GenericSupabaseServiceConfig, // Import Supabase config type
   FetchMode,
-} from "@/api/common/supabase"; // Adjust path for common Supabase types
-import { mapRowToPartialApi } from "@/api/common/supabase"; // Import common Supabase mapper
+} from "@/lib/common/supabase"; // Adjust path for common Supabase types
+import { mapRowToPartialApi } from "@/lib/common/supabase"; // Import common Supabase mapper
 import { cashFlowKeyOrder, CACHE_TTL_MS } from "./constants"; // Import constants (ensure cashFlowKeyOrder uses snake_case)
 
 // Import specific types and mappers for Cash Flow Statements (Supabase version)

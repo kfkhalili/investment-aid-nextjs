@@ -4,7 +4,7 @@
  * ---------------------------------------------------------------------*/
 
 // 1. Import the generic service creator function for SUPABASE
-import { createGenericSupabaseService } from "@/api/common/supabase"; // Ensure this path is correct
+import { createGenericSupabaseService } from "@/lib/common/supabase"; // Ensure this path is correct
 
 // 2. Import the specific configuration for profiles (Supabase version)
 import { profileConfig } from "./config";

@@ -2,8 +2,8 @@
  * src/api/stock-screener/service/config.ts (Supabase Version)
  * Configuration for the Stock Screener service using Supabase.
  * ---------------------------------------------------------------------*/
-import { GenericSupabaseServiceConfig, FetchMode } from "@/api/common/supabase";
-import { mapRowToPartialApi } from "@/api/common/supabase";
+import { GenericSupabaseServiceConfig, FetchMode } from "@/lib/common/supabase";
+import { mapRowToPartialApi } from "@/lib/common/supabase";
 import { stockScreenerKeyOrder, CACHE_TTL_MS } from "./constants";
 
 // Import specific types and mappers for Stock Screener (Supabase version)
