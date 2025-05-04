@@ -6,7 +6,7 @@
 import { NextResponse } from "next/server";
 
 // 1. Import service methods for Profile AND Historical Price
-import { getProfile } from "@/api/profiles-supa/service"; // Adjust path as needed
+import { getProfile } from "@/api/profiles/service"; // Adjust path as needed
 import { getHistoricalPricesForSymbol } from "../service"; // Adjust path (ensure this points to SUPABASE service index)
 
 // 2. Import the Row type (returned by the service)

@@ -6,10 +6,10 @@
 import { NextResponse } from "next/server";
 
 // 1. Import service methods for Profile AND all statement types
-import { getProfile } from "@/api/profiles-supa/service"; // Adjust path
-import { getIncomeStatementsForSymbol } from "@/api/income-statements-supa/service"; // Adjust path
-import { getBalanceSheetStatementsForSymbol } from "@/api/balance-sheet-statements-supa/service"; // Adjust path
-import { getCashFlowStatementsForSymbol } from "@/api/cash-flow-statements-supa/service"; // Adjust path
+import { getProfile } from "@/api/profiles/service"; // Adjust path
+import { getIncomeStatementsForSymbol } from "@/api/income-statements/service"; // Adjust path
+import { getBalanceSheetStatementsForSymbol } from "@/api/balance-sheet-statements/service"; // Adjust path
+import { getCashFlowStatementsForSymbol } from "@/api/cash-flow-statements/service"; // Adjust path
 
 // 2. Define the symbols you want to populate/update
 const SYMBOLS_TO_POPULATE: ReadonlyArray<string> = [
