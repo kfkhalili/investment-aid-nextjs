@@ -24,14 +24,15 @@ import type { IncomeStatement } from "../service"; // Should be Supabase version
 export async function GET(
   request: Request, // Use the request object to access URL
   // Correctly type params for App Router dynamic segments
-  { params }: { params: { symbol: string } }
+  { params }: { params: Promise<{ symbol: string }> }
 ): Promise<
   NextResponse<
     Partial<IncomeStatement> | Partial<IncomeStatement>[] | { error: string }
   >
 > {
   // Get and uppercase the symbol from the route parameters
-  const symbol = params.symbol?.toUpperCase();
+  const { symbol: symbolParam } = await params;
+  const symbol = symbolParam?.toUpperCase();
 
   // Check for query parameter
   const { searchParams } = new URL(request.url);

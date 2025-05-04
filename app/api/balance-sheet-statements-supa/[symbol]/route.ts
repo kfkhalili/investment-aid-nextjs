@@ -25,7 +25,7 @@ import type { BalanceSheetStatement } from "../service"; // Supabase version
 export async function GET(
   request: Request, // Use the request object to access URL
   // Correct type for params in App Router dynamic segments
-  { params }: { params: { symbol: string } }
+  { params }: { params: Promise<{ symbol: string }> }
 ): Promise<
   NextResponse<
     | Partial<BalanceSheetStatement>
@@ -34,7 +34,8 @@ export async function GET(
   >
 > {
   // Access symbol directly from params, uppercase it
-  const symbol = params.symbol?.toUpperCase();
+  const { symbol: symbolParam } = await params;
+  const symbol = symbolParam?.toUpperCase();
 
   // Check for query parameter
   const { searchParams } = new URL(request.url);

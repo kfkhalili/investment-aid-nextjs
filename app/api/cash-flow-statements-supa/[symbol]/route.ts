@@ -24,7 +24,7 @@ import type { CashFlowStatement } from "../service"; // Supabase version
  */
 export async function GET(
   request: Request, // Use the request object to access URL
-  { params }: { params: { symbol: string } } // Correct params type for App Router
+  { params }: { params: Promise<{ symbol: string }> }
 ): Promise<
   NextResponse<
     | Partial<CashFlowStatement> // Single result type
@@ -33,7 +33,8 @@ export async function GET(
   >
 > {
   // Get symbol directly from params and uppercase it
-  const symbol = params.symbol?.toUpperCase();
+  const { symbol: symbolParam } = await params;
+  const symbol = symbolParam?.toUpperCase();
 
   // --- Check for query parameter ---
   const { searchParams } = new URL(request.url);
