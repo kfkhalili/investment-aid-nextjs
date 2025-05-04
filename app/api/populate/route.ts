@@ -10,6 +10,7 @@ import { getProfile } from "@/api/profiles/service";
 import { getIncomeStatementsForSymbol } from "@/api/income-statements/service";
 import { getBalanceSheetStatementsForSymbol } from "@/api/balance-sheet-statements/service";
 import { getCashFlowStatementsForSymbol } from "@/api/cash-flow-statements/service";
+import { getHistoricalPricesForSymbol } from "../historical-price/service";
 
 // 2. Define the symbols you want to populate/update
 const SYMBOLS_TO_POPULATE: ReadonlyArray<string> = [
@@ -84,6 +85,7 @@ export async function GET() {
       income: "Skipped",
       balance: "Skipped",
       cashflow: "Skipped",
+      historicalprice: "Skipped",
     };
     let overallStatus: "Success" | "Failed" = "Failed"; // Assume failure
     let overallError: string | undefined = undefined;
@@ -116,11 +118,12 @@ export async function GET() {
 
       // --- Step 2: Fetch Statements Concurrently (only if profile succeeded) ---
       console.log(`[Populate] Fetching statements for ${symbolUpper}...`);
-      const [incomeResult, balanceResult, cashFlowResult] =
+      const [incomeResult, balanceResult, cashFlowResult, historicalprice] =
         await Promise.allSettled([
           getIncomeStatementsForSymbol(symbolUpper),
           getBalanceSheetStatementsForSymbol(symbolUpper),
           getCashFlowStatementsForSymbol(symbolUpper),
+          getHistoricalPricesForSymbol(symbolUpper),
         ]);
 
       // Update status based on promise results
@@ -145,13 +148,21 @@ export async function GET() {
               (cashFlowResult.reason as Error)?.message ??
               String(cashFlowResult.reason)
             }`;
+      results.historicalprice =
+        cashFlowResult.status === "fulfilled"
+          ? "Success"
+          : `Failed: ${
+              (cashFlowResult.reason as Error)?.message ??
+              String(cashFlowResult.reason)
+            }`;
 
       // Determine overall success only if profile AND ALL statements succeeded
       if (
         results.profile === "Success" &&
         incomeResult.status === "fulfilled" &&
         balanceResult.status === "fulfilled" &&
-        cashFlowResult.status === "fulfilled"
+        cashFlowResult.status === "fulfilled" &&
+        historicalprice.status === "fulfilled"
       ) {
         overallStatus = "Success";
       } else if (results.profile === "Success") {
