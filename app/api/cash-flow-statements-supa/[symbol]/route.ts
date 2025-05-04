@@ -77,7 +77,7 @@ export async function GET(
 
     if (getLatestOnly) {
       // --- Fetch Only Latest ---
-      console.log(`Workspaceing latest cash flow statement for ${symbol}...`); // Updated log
+      console.log(`Fetching latest cash flow statement for ${symbol}...`); // Updated log
       data = await getLatestCashFlowStatement(symbol); // Use correct function
 
       if (!data) {
@@ -94,7 +94,7 @@ export async function GET(
       // data is Partial<CashFlowStatement> | null (but non-null here)
     } else {
       // --- Fetch All History ---
-      console.log(`Workspaceing all cash flow statements for ${symbol}...`); // Updated log
+      console.log(`Fetching all cash flow statements for ${symbol}...`); // Updated log
       data = await getCashFlowStatementsForSymbol(symbol); // Use correct function
 
       // Return 200 OK with empty array if history is empty for this symbol.

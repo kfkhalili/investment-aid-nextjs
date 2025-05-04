@@ -79,7 +79,7 @@ export async function GET(
 
     if (getLatestOnly) {
       // --- Fetch Only Latest ---
-      console.log(`Workspaceing latest balance sheet for ${symbol}...`);
+      console.log(`Fetching latest balance sheet for ${symbol}...`);
       data = await getLatestBalanceSheetStatement(symbol); // Returns single object or null
 
       if (!data) {
@@ -94,7 +94,7 @@ export async function GET(
       // data is Partial<BalanceSheetStatement>
     } else {
       // --- Fetch All History ---
-      console.log(`Workspaceing all balance sheets for ${symbol}...`);
+      console.log(`Fetching all balance sheets for ${symbol}...`);
       data = await getBalanceSheetStatementsForSymbol(symbol); // Returns array
 
       // Return 200 OK with empty array if history exists but is empty.

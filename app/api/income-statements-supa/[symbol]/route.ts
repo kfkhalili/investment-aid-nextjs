@@ -74,7 +74,7 @@ export async function GET(
 
     if (getLatestOnly) {
       // --- Fetch Only Latest ---
-      console.log(`Workspaceing latest income statement for ${symbol}...`);
+      console.log(`Fetching latest income statement for ${symbol}...`);
       data = await getLatestIncomeStatement(symbol); // Calls service.getOne
 
       if (!data) {
@@ -89,7 +89,7 @@ export async function GET(
       // data is Partial<IncomeStatement>
     } else {
       // --- Fetch All History ---
-      console.log(`Workspaceing all income statements for ${symbol}...`);
+      console.log(`Fetching all income statements for ${symbol}...`);
       data = await getIncomeStatementsForSymbol(symbol); // Calls service.getAllForSymbol
 
       // Return 200 OK with empty array if history exists but is empty for this symbol

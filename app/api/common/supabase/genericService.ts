@@ -152,7 +152,7 @@ export function createGenericSupabaseService<
     // Construct URL using configured symbol location
     if (fetchMode === FetchMode.BySymbol) {
       if (!symbol)
-        throw new Error(`Workspace Error (${tableName}): Symbol required.`);
+        throw new Error(`Fetch Error (${tableName}): Symbol required.`);
       if (fmpSymbolLocation === "param") {
         const queryParams = new URLSearchParams({
           ...baseQueryParams,
@@ -168,10 +168,7 @@ export function createGenericSupabaseService<
       actualUrl = `${baseUrl}?${queryParams}`;
     }
     console.log(
-      `Workspaceing from FMP [${fetchMode}]: ${actualUrl.replace(
-        apiKey,
-        "***"
-      )}`
+      `Fetching from FMP [${fetchMode}]: ${actualUrl.replace(apiKey, "***")}`
     );
     const response = await fetch(actualUrl, { cache: "no-store" });
     // Handle FMP Response / Errors
