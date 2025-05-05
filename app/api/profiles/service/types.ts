@@ -62,6 +62,10 @@ export interface Profile
 // Note: The generic service actually returns Partial<Profile>
 
 // --- Mapping Function (Raw -> Row Structure for DB) ---
+// Helper function to round number or return 0 (for BIGINT columns)
+const roundToBigIntOrZero = (value: number | null | undefined): number => {
+  return Math.round(value ?? 0);
+};
 
 /**
  * Maps the raw FMP API profile data (camelCase) to the structure needed for DB storage (snake_case),
@@ -82,14 +86,14 @@ export const mapRawProfileToRow = (
   return {
     symbol: raw.symbol, // Assumed same name
     price: raw.price ?? null,
-    market_cap: raw.marketCap ?? null,
+    market_cap: roundToBigIntOrZero(raw.marketCap),
     beta: raw.beta ?? null,
     last_dividend: raw.lastDividend ?? null,
     range: raw.range ?? null,
     change: raw.change ?? null,
     change_percentage: raw.changePercentage ?? null,
-    volume: raw.volume ?? null,
-    average_volume: raw.averageVolume ?? null,
+    volume: roundToBigIntOrZero(raw.volume),
+    average_volume: roundToBigIntOrZero(raw.averageVolume),
     company_name: raw.companyName ?? null,
     currency: raw.currency ?? null,
     cik: raw.cik ?? null,

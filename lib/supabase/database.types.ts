@@ -337,6 +337,50 @@ export type Database = {
           },
         ]
       }
+      earnings_calendar: {
+        Row: {
+          date: string
+          eps_actual: number | null
+          eps_estimated: number | null
+          id: string
+          last_updated: string | null
+          modified_at: string
+          revenue_actual: number | null
+          revenue_estimated: number | null
+          symbol: string
+        }
+        Insert: {
+          date: string
+          eps_actual?: number | null
+          eps_estimated?: number | null
+          id?: string
+          last_updated?: string | null
+          modified_at?: string
+          revenue_actual?: number | null
+          revenue_estimated?: number | null
+          symbol: string
+        }
+        Update: {
+          date?: string
+          eps_actual?: number | null
+          eps_estimated?: number | null
+          id?: string
+          last_updated?: string | null
+          modified_at?: string
+          revenue_actual?: number | null
+          revenue_estimated?: number | null
+          symbol?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_earnings_calendar_symbol"
+            columns: ["symbol"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["symbol"]
+          },
+        ]
+      }
       grades_consensus: {
         Row: {
           buy: number | null
