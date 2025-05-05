@@ -2,19 +2,15 @@
 
 import { type NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase/serverClient"; // Adjust path if needed
-// We assume getHistoricalPricesForSymbol is NOT needed here, as we query directly
-// import { getHistoricalPricesForSymbol } from '@/api/historical-price/service';
 import type { Database } from "@/lib/supabase/database.types"; // Adjust path if needed
 
 // --- Types ---
 type HistoricalPrice = Database["public"]["Tables"]["historical_prices"]["Row"];
-// Use Pick for stricter typing on selected columns
 type PriceDataPoint = Pick<HistoricalPrice, "date" | "close">;
 type SignalInsert = Database["public"]["Tables"]["signals"]["Insert"];
-type MovingAverageValues = { [period: number]: number | undefined }; // Store calculated MAs
+type MovingAverageValues = { [period: number]: number | undefined };
 
 // --- Configuration ---
-// TODO: Move symbol list to a config file, database table, or environment variable
 const ALL_SYMBOLS_TO_PROCESS: string[] = [
   "MSFT", // Microsoft Corp.
   "AAPL", // Apple Inc.
@@ -66,15 +62,13 @@ const ALL_SYMBOLS_TO_PROCESS: string[] = [
   "RTX", // RTX Corporation
   "BKNG", // Booking Holdings Inc.
   "PGR", // The Progressive Corporation
+  "GME", // GameStop Corp
 ];
-// Adjust based on performance testing within Vercel's free tier timeout (~10s)
 const BATCH_SIZE = 50;
-// MAs needed for the signals we're generating in this specific function
 const MAs_REQUIRED: number[] = [50, 200];
 // ---
 
 // --- Helper: Calculate MAs ---
-// Calculates MAs for the specified periods using the provided prices (assumed sorted DESC)
 function calculateMAs(
   prices: PriceDataPoint[],
   periods: number[]
@@ -85,22 +79,19 @@ function calculateMAs(
   for (const period of periods) {
     if (prices.length >= period) {
       const pricesForPeriod = prices.slice(0, period);
-      // Ensure close is treated as a number, default to 0 if null/undefined
       const sum = pricesForPeriod.reduce(
         (acc, day) => acc + (day.close ?? 0),
         0
       );
       if (period > 0) {
-        // Should always be > 0 based on config
         calculatedMAs[period] = parseFloat((sum / period).toFixed(2));
       }
     }
-    // If not enough data, the key for 'period' will be missing (or undefined)
   }
   return calculatedMAs;
 }
 
-// --- Helper: Determine Price vs MA Position Rank (1-5) ---
+// --- Helper: Determine Price vs MA Position Rank (1-5) - UPDATED ---
 function getPriceVsMaRank(
   close: number | null | undefined,
   ma50: number | null | undefined,
@@ -109,25 +100,72 @@ function getPriceVsMaRank(
   if (close == null || ma50 == null || ma200 == null) {
     return null; // Cannot rank if essential data is missing
   }
-  // Using the simplified 4-state model mapped to 1, 2, 4, 5 for clearer distinction
-  // You can refine this logic based on the 5-rank discussion if needed
-  if (close > ma50 && close > ma200) return 5; // Clearly Bullish
-  if (close < ma50 && close > ma200) return 4; // Holding LT support, MT weak (Pullback?)
-  if (close > ma50 && close < ma200) return 2; // Failing LT resistance, MT strong (Bounce?)
-  if (close < ma50 && close < ma200) return 1; // Clearly Bearish
 
-  return null; // Fallback, should ideally not be reached
+  const priceAbove50 = close > ma50;
+  const priceAbove200 = close > ma200;
+  const ma50Above200 = ma50 > ma200;
+
+  // Rank 5: Bullish (Price > MA50, MA50 > MA200 -> implies Price > MA200)
+  if (priceAbove50 && ma50Above200) {
+    return 5;
+  }
+
+  // Rank 1: Bearish (Price < MA50, MA50 < MA200 -> implies Price < MA200)
+  if (!priceAbove50 && !ma50Above200) {
+    return 1;
+  }
+
+  // Rank 4: Slightly Bullish
+  // Case 1: Price > both MAs, but 50MA still below 200MA (turning bullish?)
+  // Case 2: Price pulled back below 50MA, but above 200MA, and 50MA > 200MA (uptrend pullback?)
+  if (
+    (priceAbove50 && priceAbove200 && !ma50Above200) ||
+    (!priceAbove50 && priceAbove200 && ma50Above200)
+  ) {
+    return 4;
+  }
+
+  // Rank 2: Slightly Bearish
+  // Case 1: Price bounced above 50MA, but below 200MA, and 50MA < 200MA (downtrend bounce?)
+  // Case 2: Price broke below both MAs, but 50MA was still above 200MA (breaking down?)
+  if (
+    (priceAbove50 && !priceAbove200 && !ma50Above200) ||
+    (!priceAbove50 && !priceAbove200 && ma50Above200)
+  ) {
+    return 2;
+  }
+
+  // Rank 3: Neutral / Conflicted - This covers the remaining cases
+  // Case 1: Price below 50MA, above 200MA, but 50MA < 200MA
+  // Case 2: Price above 50MA, below 200MA, but 50MA > 200MA
+  // Since ranks 1, 2, 4, 5 cover all other combinations, any remaining valid state must be Rank 3.
+  // We can simplify the check or explicitly state the conditions if preferred for clarity,
+  // but logically, if it's not 1, 2, 4, or 5, it should be 3.
+  // Let's use the explicit conditions for clarity:
+  if (
+    (!priceAbove50 && priceAbove200 && !ma50Above200) ||
+    (priceAbove50 && !priceAbove200 && ma50Above200)
+  ) {
+    return 3;
+  }
+
+  // Fallback - Log if somehow a condition was missed (should not happen with boolean logic)
+  console.warn(
+    `[MA Signal Generator] Unhandled rank condition: P=${close}, MA50=${ma50}, MA200=${ma200}`
+  );
+  return null; // Return null if no rank could be determined
 }
 
 // --- Main Route Handler ---
 export async function GET(request: NextRequest): Promise<NextResponse> {
-  // --- Security Check for Vercel Cron ---
+  // --- Security Check ---
   const authToken = (request.headers.get("authorization") || "")
     .split("Bearer ")
     .at(1);
   if (process.env.CRON_SECRET && authToken !== process.env.CRON_SECRET) {
     console.warn("[MA Signal Generator] Unauthorized attempt");
-    return NextResponse.json("Unauthorized", { status: 401 });
+    // Use NextResponse for consistency in responses
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   // ---
 
@@ -167,10 +205,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   // --- Process Batch ---
   for (const symbol of symbolsForThisBatch) {
     try {
-      // 1. Fetch data for T, T-1, and longest MA calculation
       const maxPeriod = Math.max(...MAs_REQUIRED);
-      // Need N points for MA ending T-1, plus the point for T itself
-      const requiredDataPoints = maxPeriod + 1; // e.g., 51 for SMA50 cross, 201 for SMA200 check
+      const requiredDataPoints = maxPeriod + 1;
 
       const { data: prices, error: dbError } = await supabase
         .from("historical_prices")
@@ -180,30 +216,28 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         .limit(requiredDataPoints);
 
       if (dbError) throw new Error(`Supabase fetch error: ${dbError.message}`);
-      // Need at least 2 data points for T and T-1 comparison
       if (!prices || prices.length < 2)
         throw new Error(`Insufficient data (< 2 days)`);
 
       const typedPrices = prices as PriceDataPoint[];
-      const dataT = typedPrices[0]; // Latest data point
-      const dataTminus1 = typedPrices[1]; // Previous data point
+      const dataT = typedPrices[0];
+      const dataTminus1 = typedPrices[1];
 
-      // 2. Calculate required MAs for T and T-1
       const masT = calculateMAs(typedPrices, MAs_REQUIRED);
-      const masTminus1 = calculateMAs(typedPrices.slice(1), MAs_REQUIRED); // Use data starting from T-1
+      const masTminus1 = calculateMAs(typedPrices.slice(1), MAs_REQUIRED);
 
-      // --- 3. Apply Signal Rules ---
+      // --- Apply Signal Rules ---
       const signalsForSymbol: SignalInsert[] = [];
-      const signalDate = dataT.date; // Signal occurred based on data available at end of this day
+      const signalDate = dataT.date;
 
-      // Rule 1: Price vs MA Position Rank (using 50 & 200 day MAs)
+      // Rule 1: Price vs MA Position Rank
       const rankT = getPriceVsMaRank(dataT.close, masT[50], masT[200]);
       if (rankT !== null) {
         signalsForSymbol.push({
           signal_date: signalDate,
           symbol: symbol,
           signal_type: "technical",
-          signal_code: `PRICE_POS_RANK_${rankT}`, // e.g., PRICE_POS_RANK_5
+          signal_code: `PRICE_POS_RANK_${rankT}`,
           status: "new",
           details: {
             close: dataT.close,
@@ -242,16 +276,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
             details: {
               close: closeT,
               sma50: sma50T,
-              prev_close: closeTminus1, // Optional context
-              prev_sma50: sma50Tminus1, // Optional context
+              prev_close: closeTminus1,
+              prev_sma50: sma50Tminus1,
             },
           });
         }
       }
+      // --- Add other MA-related rules here ---
 
-      // --- Add other MA-related rules here (e.g., SMA200 cross, Golden/Death Cross) ---
-
-      // Add valid signals for this symbol to the main list
       if (signalsForSymbol.length > 0) {
         allGeneratedSignals.push(...signalsForSymbol);
       }
@@ -260,47 +292,43 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       if (error instanceof Error) errorMessage = error.message;
       console.error(`[MA Signal Generator] Error processing ${symbol}:`, error);
       errorsProcessing.push({ symbol, error: errorMessage });
-      // Continue to next symbol in the batch
     }
-  } // End loop through symbols in batch
+  } // End loop
 
   // --- Store Generated Signals ---
   if (allGeneratedSignals.length > 0) {
     console.log(
-      `[MA Signal Generator] Attempting to insert ${allGeneratedSignals.length} signals for Batch ${batchNumber}...`
+      `[MA Signal Generator] Attempting to upsert ${allGeneratedSignals.length} signals for Batch ${batchNumber}...`
     );
-    const supabaseBulk = getSupabaseServerClient(); // Use separate client instance for bulk insert if needed, or reuse
-    const { error: insertError } = await supabaseBulk
+    const supabaseUpsert = getSupabaseServerClient();
+    const { error: upsertError } = await supabaseUpsert
       .from("signals")
-      .insert(allGeneratedSignals, {
-        // If using the UNIQUE constraint: ignore duplicates silently
-        // Note: Check Supabase docs for exact syntax if needed, might be UPSERT
-        // onConflict: 'symbol, signal_date, signal_code', ignoreDuplicates: true // Example, adjust if needed
+      .upsert(allGeneratedSignals, {
+        onConflict: "symbol, signal_date, signal_code",
       });
 
-    if (insertError) {
+    if (upsertError) {
       console.error(
-        `[MA Signal Generator] Error inserting signals for Batch ${batchNumber}:`,
-        insertError
+        `[MA Signal Generator] Error upserting signals for Batch ${batchNumber}:`,
+        upsertError
       );
-      // Log error but still return partial success for processed symbols
       return NextResponse.json(
         {
-          message: `Processed Batch ${batchNumber}. Symbols attempted: ${symbolsForThisBatch.length}. Generated: ${allGeneratedSignals.length} signals but FAILED to insert some/all.`,
+          message: `Processed Batch ${batchNumber}. Symbols attempted: ${symbolsForThisBatch.length}. Generated: ${allGeneratedSignals.length} signals but FAILED to upsert some/all.`,
           errorsProcessing: errorsProcessing,
-          insertError: insertError.message,
+          insertError: upsertError.message,
         },
         { status: 500 }
-      ); // Indicate partial failure
+      );
     }
   }
 
   // --- Return Response ---
   console.log(
-    `[MA Signal Generator] Finished Batch ${batchNumber}. Symbols Processed: ${symbolsForThisBatch.length}. Signals Generated: ${allGeneratedSignals.length}. Errors: ${errorsProcessing.length}`
+    `[MA Signal Generator] Finished Batch ${batchNumber}. Symbols Processed: ${symbolsForThisBatch.length}. Signals Upserted/Checked: ${allGeneratedSignals.length}. Errors: ${errorsProcessing.length}`
   );
   return NextResponse.json({
-    message: `Processed Batch ${batchNumber}. Symbols attempted: ${symbolsForThisBatch.length}. Signals generated: ${allGeneratedSignals.length}. Errors: ${errorsProcessing.length}`,
-    errors: errorsProcessing, // Return specific symbol errors
+    message: `Processed Batch ${batchNumber}. Symbols attempted: ${symbolsForThisBatch.length}. Signals generated/checked: ${allGeneratedSignals.length}. Errors: ${errorsProcessing.length}`,
+    errors: errorsProcessing,
   });
 }
