@@ -11,7 +11,6 @@ type SignalInsert = Database["public"]["Tables"]["signals"]["Insert"];
 type MovingAverageValues = { [period: number]: number | undefined };
 
 // --- Configuration ---
-// TODO: Update symbol list
 const ALL_SYMBOLS_TO_PROCESS: string[] = [
   "MSFT", // Microsoft Corp.
   "AAPL", // Apple Inc.
@@ -63,8 +62,9 @@ const ALL_SYMBOLS_TO_PROCESS: string[] = [
   "RTX", // RTX Corporation
   "BKNG", // Booking Holdings Inc.
   "PGR", // The Progressive Corporation
+  "GME", // GameStop Corp
 ];
-const BATCH_SIZE = ALL_SYMBOLS_TO_PROCESS.length;
+const BATCH_SIZE = 50;
 const MAs_REQUIRED: number[] = [50, 200];
 // ---
 
@@ -237,7 +237,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           signal_date: signalDate,
           symbol: symbol,
           signal_type: "technical",
-          signal_code: `PRICE_POS_RANK_${rankT}`, // Now includes RANK_3
+          signal_code: `PRICE_POS_RANK_${rankT}`,
           status: "new",
           details: {
             close: dataT.close,
