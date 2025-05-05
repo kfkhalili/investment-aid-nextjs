@@ -337,6 +337,53 @@ export type Database = {
           },
         ]
       }
+      grades_consensus: {
+        Row: {
+          buy: number | null
+          consensus: string | null
+          date: string
+          hold: number | null
+          id: string
+          modified_at: string
+          sell: number | null
+          strong_buy: number | null
+          strong_sell: number | null
+          symbol: string
+        }
+        Insert: {
+          buy?: number | null
+          consensus?: string | null
+          date: string
+          hold?: number | null
+          id?: string
+          modified_at?: string
+          sell?: number | null
+          strong_buy?: number | null
+          strong_sell?: number | null
+          symbol: string
+        }
+        Update: {
+          buy?: number | null
+          consensus?: string | null
+          date?: string
+          hold?: number | null
+          id?: string
+          modified_at?: string
+          sell?: number | null
+          strong_buy?: number | null
+          strong_sell?: number | null
+          symbol?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_grades_symbol"
+            columns: ["symbol"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["symbol"]
+          },
+        ]
+      }
       historical_prices: {
         Row: {
           adj_close: number | null
@@ -668,10 +715,10 @@ export type Database = {
           created_at: string
           details: Json | null
           id: string
+          signal_category: string
           signal_code: string
           signal_date: string
           signal_type: string
-          status: string
           symbol: string
         }
         Insert: {
@@ -679,10 +726,10 @@ export type Database = {
           created_at?: string
           details?: Json | null
           id?: string
+          signal_category: string
           signal_code: string
           signal_date: string
           signal_type: string
-          status?: string
           symbol: string
         }
         Update: {
@@ -690,10 +737,10 @@ export type Database = {
           created_at?: string
           details?: Json | null
           id?: string
+          signal_category?: string
           signal_code?: string
           signal_date?: string
           signal_type?: string
-          status?: string
           symbol?: string
         }
         Relationships: [
