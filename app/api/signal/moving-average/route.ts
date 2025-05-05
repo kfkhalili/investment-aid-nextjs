@@ -7,7 +7,14 @@ import type { Database } from "@/lib/supabase/database.types"; // Adjust path if
 // --- Types ---
 type HistoricalPrice = Database["public"]["Tables"]["historical_prices"]["Row"];
 type PriceDataPoint = Pick<HistoricalPrice, "date" | "close">;
-type SignalInsert = Database["public"]["Tables"]["signals"]["Insert"];
+// Define SignalInsert based on the final table structure with both columns
+type SignalInsert = Omit<
+  Database["public"]["Tables"]["signals"]["Insert"],
+  "signal_category" | "signal_type"
+> & {
+  signal_category: "technical"; // Explicitly technical for this generator
+  signal_type: "event" | "state";
+};
 type MovingAverageValues = { [period: number]: number | undefined };
 
 // --- Configuration ---
@@ -64,7 +71,7 @@ const ALL_SYMBOLS_TO_PROCESS: string[] = [
   "PGR", // The Progressive Corporation
   "GME", // GameStop Corp
 ];
-const BATCH_SIZE = 51;
+const BATCH_SIZE = ALL_SYMBOLS_TO_PROCESS.length; // Assuming 51 symbols fit now
 const MAs_REQUIRED: number[] = [50, 200];
 // ---
 
@@ -75,7 +82,6 @@ function calculateMAs(
 ): MovingAverageValues {
   const calculatedMAs: MovingAverageValues = {};
   if (!prices || prices.length === 0) return calculatedMAs;
-
   for (const period of periods) {
     if (prices.length >= period) {
       const pricesForPeriod = prices.slice(0, period);
@@ -91,69 +97,38 @@ function calculateMAs(
   return calculatedMAs;
 }
 
-// --- Helper: Determine Price vs MA Position Rank (1-5) - UPDATED ---
+// --- Helper: Determine Price vs MA Position Rank (1-5) ---
 function getPriceVsMaRank(
   close: number | null | undefined,
   ma50: number | null | undefined,
   ma200: number | null | undefined
 ): number | null {
-  if (close == null || ma50 == null || ma200 == null) {
-    return null; // Cannot rank if essential data is missing
-  }
-
+  // (Keep the detailed 5-rank logic from the previous version here)
+  if (close == null || ma50 == null || ma200 == null) return null;
   const priceAbove50 = close > ma50;
   const priceAbove200 = close > ma200;
   const ma50Above200 = ma50 > ma200;
-
-  // Rank 5: Bullish (Price > MA50, MA50 > MA200 -> implies Price > MA200)
-  if (priceAbove50 && ma50Above200) {
-    return 5;
-  }
-
-  // Rank 1: Bearish (Price < MA50, MA50 < MA200 -> implies Price < MA200)
-  if (!priceAbove50 && !ma50Above200) {
-    return 1;
-  }
-
-  // Rank 4: Slightly Bullish
-  // Case 1: Price > both MAs, but 50MA still below 200MA (turning bullish?)
-  // Case 2: Price pulled back below 50MA, but above 200MA, and 50MA > 200MA (uptrend pullback?)
+  if (priceAbove50 && ma50Above200) return 5;
+  if (!priceAbove50 && !ma50Above200) return 1;
   if (
     (priceAbove50 && priceAbove200 && !ma50Above200) ||
     (!priceAbove50 && priceAbove200 && ma50Above200)
-  ) {
+  )
     return 4;
-  }
-
-  // Rank 2: Slightly Bearish
-  // Case 1: Price bounced above 50MA, but below 200MA, and 50MA < 200MA (downtrend bounce?)
-  // Case 2: Price broke below both MAs, but 50MA was still above 200MA (breaking down?)
   if (
     (priceAbove50 && !priceAbove200 && !ma50Above200) ||
     (!priceAbove50 && !priceAbove200 && ma50Above200)
-  ) {
+  )
     return 2;
-  }
-
-  // Rank 3: Neutral / Conflicted - This covers the remaining cases
-  // Case 1: Price below 50MA, above 200MA, but 50MA < 200MA
-  // Case 2: Price above 50MA, below 200MA, but 50MA > 200MA
-  // Since ranks 1, 2, 4, 5 cover all other combinations, any remaining valid state must be Rank 3.
-  // We can simplify the check or explicitly state the conditions if preferred for clarity,
-  // but logically, if it's not 1, 2, 4, or 5, it should be 3.
-  // Let's use the explicit conditions for clarity:
   if (
     (!priceAbove50 && priceAbove200 && !ma50Above200) ||
     (priceAbove50 && !priceAbove200 && ma50Above200)
-  ) {
+  )
     return 3;
-  }
-
-  // Fallback - Log if somehow a condition was missed (should not happen with boolean logic)
   console.warn(
     `[MA Signal Generator] Unhandled rank condition: P=${close}, MA50=${ma50}, MA200=${ma200}`
   );
-  return null; // Return null if no rank could be determined
+  return null;
 }
 
 // --- Main Route Handler ---
@@ -163,8 +138,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     .split("Bearer ")
     .at(1);
   if (process.env.CRON_SECRET && authToken !== process.env.CRON_SECRET) {
-    console.warn("[MA Signal Generator] Unauthorized attempt");
-    // Use NextResponse for consistency in responses
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   // ---
@@ -180,7 +153,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     );
   }
 
-  // --- Determine Symbols for this Batch ---
+  // Determine Symbols for this Batch
   const startIndex = (batchNumber - 1) * BATCH_SIZE;
   const endIndex = startIndex + BATCH_SIZE;
   const symbolsForThisBatch = ALL_SYMBOLS_TO_PROCESS.slice(
@@ -190,19 +163,18 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   if (symbolsForThisBatch.length === 0) {
     return NextResponse.json({
-      message: `No symbols found for batch ${batchNumber}. Processing likely complete.`,
+      message: `No symbols found for batch ${batchNumber}.`,
     });
   }
 
   console.log(
-    `[MA Signal Generator] Starting Batch ${batchNumber}, Symbols: ${symbolsForThisBatch.length}, From index ${startIndex}`
+    `[MA Signal Generator] Starting Batch ${batchNumber}, Symbols: ${symbolsForThisBatch.length}`
   );
-
   const supabase = getSupabaseServerClient();
   const allGeneratedSignals: SignalInsert[] = [];
   const errorsProcessing: { symbol: string; error: string }[] = [];
 
-  // --- Process Batch ---
+  // Process Batch
   for (const symbol of symbolsForThisBatch) {
     try {
       const maxPeriod = Math.max(...MAs_REQUIRED);
@@ -222,7 +194,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       const typedPrices = prices as PriceDataPoint[];
       const dataT = typedPrices[0];
       const dataTminus1 = typedPrices[1];
-
       const masT = calculateMAs(typedPrices, MAs_REQUIRED);
       const masTminus1 = calculateMAs(typedPrices.slice(1), MAs_REQUIRED);
 
@@ -230,24 +201,20 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       const signalsForSymbol: SignalInsert[] = [];
       const signalDate = dataT.date;
 
-      // Rule 1: Price vs MA Position Rank
+      // Rule 1: Price vs MA Position Rank (State Signal)
       const rankT = getPriceVsMaRank(dataT.close, masT[50], masT[200]);
       if (rankT !== null) {
         signalsForSymbol.push({
           signal_date: signalDate,
           symbol: symbol,
-          signal_type: "technical",
+          signal_category: "technical", // Set category
+          signal_type: "state", // Set type to 'state'
           signal_code: `PRICE_POS_RANK_${rankT}`,
-          status: "new",
-          details: {
-            close: dataT.close,
-            ma50: masT[50],
-            ma200: masT[200],
-          },
+          details: { close: dataT.close, ma50: masT[50], ma200: masT[200] },
         });
       }
 
-      // Rule 2: SMA 50 Cross
+      // Rule 2: SMA 50 Cross (Event Signal)
       const closeT = dataT.close;
       const closeTminus1 = dataTminus1.close;
       const sma50T = masT[50];
@@ -270,9 +237,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           signalsForSymbol.push({
             signal_date: signalDate,
             symbol: symbol,
-            signal_type: "technical",
+            signal_category: "technical", // Set category
+            signal_type: "event", // Set type to 'event'
             signal_code: crossSignalCode,
-            status: "new",
             details: {
               close: closeT,
               sma50: sma50T,
@@ -298,23 +265,27 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   // --- Store Generated Signals ---
   if (allGeneratedSignals.length > 0) {
     console.log(
-      `[MA Signal Generator] Attempting to upsert ${allGeneratedSignals.length} signals for Batch ${batchNumber}...`
+      `[MA Signal Generator] Attempting to upsert ${allGeneratedSignals.length} signals...`
     );
     const supabaseUpsert = getSupabaseServerClient();
+    // Provide the explicit type for upsert, ensuring it matches the table structure
     const { error: upsertError } = await supabaseUpsert
       .from("signals")
-      .upsert(allGeneratedSignals, {
-        onConflict: "symbol, signal_date, signal_code",
-      });
+      .upsert(
+        allGeneratedSignals as Database["public"]["Tables"]["signals"]["Insert"][],
+        {
+          onConflict: "symbol, signal_date, signal_code",
+        }
+      );
 
     if (upsertError) {
       console.error(
-        `[MA Signal Generator] Error upserting signals for Batch ${batchNumber}:`,
+        "[MA Signal Generator] Error upserting signals:",
         upsertError
       );
       return NextResponse.json(
         {
-          message: `Processed Batch ${batchNumber}. Symbols attempted: ${symbolsForThisBatch.length}. Generated: ${allGeneratedSignals.length} signals but FAILED to upsert some/all.`,
+          message: `Processed Batch ${batchNumber}. FAILED to upsert some/all signals.`,
           errorsProcessing: errorsProcessing,
           insertError: upsertError.message,
         },
@@ -325,7 +296,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   // --- Return Response ---
   console.log(
-    `[MA Signal Generator] Finished Batch ${batchNumber}. Symbols Processed: ${symbolsForThisBatch.length}. Signals Upserted/Checked: ${allGeneratedSignals.length}. Errors: ${errorsProcessing.length}`
+    `[MA Signal Generator] Finished Batch ${batchNumber}. Processed: ${symbolsForThisBatch.length}. Signals Generated: ${allGeneratedSignals.length}. Errors: ${errorsProcessing.length}`
   );
   return NextResponse.json({
     message: `Processed Batch ${batchNumber}. Symbols attempted: ${symbolsForThisBatch.length}. Signals generated/checked: ${allGeneratedSignals.length}. Errors: ${errorsProcessing.length}`,

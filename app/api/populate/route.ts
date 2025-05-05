@@ -11,6 +11,7 @@ import { getIncomeStatementsForSymbol } from "@/api/income-statements/service";
 import { getBalanceSheetStatementsForSymbol } from "@/api/balance-sheet-statements/service";
 import { getCashFlowStatementsForSymbol } from "@/api/cash-flow-statements/service";
 import { getHistoricalPricesForSymbol } from "../historical-prices/service";
+import { getLatestGradesConsensus } from "../grades-consensus/service";
 
 // 2. Define the symbols you want to populate/update
 const SYMBOLS_TO_POPULATE: ReadonlyArray<string> = [
@@ -87,6 +88,7 @@ export async function GET() {
       balance: "Skipped",
       cashflow: "Skipped",
       historicalprice: "Skipped",
+      gradesconsensus: "Skipped",
     };
     let overallStatus: "Success" | "Failed" = "Failed"; // Assume failure
     let overallError: string | undefined = undefined;
@@ -119,13 +121,19 @@ export async function GET() {
 
       // --- Step 2: Fetch Statements Concurrently (only if profile succeeded) ---
       console.log(`[Populate] Fetching statements for ${symbolUpper}...`);
-      const [incomeResult, balanceResult, cashFlowResult, historicalprice] =
-        await Promise.allSettled([
-          getIncomeStatementsForSymbol(symbolUpper),
-          getBalanceSheetStatementsForSymbol(symbolUpper),
-          getCashFlowStatementsForSymbol(symbolUpper),
-          getHistoricalPricesForSymbol(symbolUpper),
-        ]);
+      const [
+        incomeResult,
+        balanceResult,
+        cashFlowResult,
+        historicalpriceResult,
+        gradesconsensusResult,
+      ] = await Promise.allSettled([
+        getIncomeStatementsForSymbol(symbolUpper),
+        getBalanceSheetStatementsForSymbol(symbolUpper),
+        getCashFlowStatementsForSymbol(symbolUpper),
+        getHistoricalPricesForSymbol(symbolUpper),
+        getLatestGradesConsensus(symbolUpper),
+      ]);
 
       // Update status based on promise results
       results.income =
@@ -150,11 +158,18 @@ export async function GET() {
               String(cashFlowResult.reason)
             }`;
       results.historicalprice =
-        cashFlowResult.status === "fulfilled"
+        historicalpriceResult.status === "fulfilled"
           ? "Success"
           : `Failed: ${
-              (cashFlowResult.reason as Error)?.message ??
-              String(cashFlowResult.reason)
+              (historicalpriceResult.reason as Error)?.message ??
+              String(historicalpriceResult.reason)
+            }`;
+      results.gradesconsensus =
+        gradesconsensusResult.status === "fulfilled"
+          ? "Success"
+          : `Failed: ${
+              (gradesconsensusResult.reason as Error)?.message ??
+              String(gradesconsensusResult.reason)
             }`;
 
       // Determine overall success only if profile AND ALL statements succeeded
@@ -163,7 +178,8 @@ export async function GET() {
         incomeResult.status === "fulfilled" &&
         balanceResult.status === "fulfilled" &&
         cashFlowResult.status === "fulfilled" &&
-        historicalprice.status === "fulfilled"
+        historicalpriceResult.status === "fulfilled" &&
+        gradesconsensusResult.status === "fulfilled"
       ) {
         overallStatus = "Success";
       } else if (results.profile === "Success") {
