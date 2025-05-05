@@ -10,7 +10,7 @@ import { getProfile } from "@/api/profiles/service";
 import { getIncomeStatementsForSymbol } from "@/api/income-statements/service";
 import { getBalanceSheetStatementsForSymbol } from "@/api/balance-sheet-statements/service";
 import { getCashFlowStatementsForSymbol } from "@/api/cash-flow-statements/service";
-import { getHistoricalPricesForSymbol } from "../historical-price/service";
+import { getHistoricalPricesForSymbol } from "../historical-prices/service";
 
 // 2. Define the symbols you want to populate/update
 const SYMBOLS_TO_POPULATE: ReadonlyArray<string> = [

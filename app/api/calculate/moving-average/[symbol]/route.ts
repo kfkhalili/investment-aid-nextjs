@@ -2,7 +2,7 @@
 
 import { type NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase/serverClient"; // Adjust path if needed
-import { getHistoricalPricesForSymbol } from "@/api/historical-price/service"; // Adjust path if needed
+import { getHistoricalPricesForSymbol } from "@/api/historical-prices/service"; // Adjust path if needed
 import type { Database } from "@/lib/supabase/database.types"; // Adjust path if needed
 
 // Define the shape of the data coming from your table using generated types

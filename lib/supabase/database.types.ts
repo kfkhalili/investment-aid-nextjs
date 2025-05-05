@@ -662,6 +662,50 @@ export type Database = {
         }
         Relationships: []
       }
+      signals: {
+        Row: {
+          confidence: number | null
+          created_at: string
+          details: Json | null
+          id: string
+          signal_code: string
+          signal_date: string
+          signal_type: string
+          status: string
+          symbol: string
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+          signal_code: string
+          signal_date: string
+          signal_type: string
+          status?: string
+          symbol: string
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+          signal_code?: string
+          signal_date?: string
+          signal_type?: string
+          status?: string
+          symbol?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_signals_symbol"
+            columns: ["symbol"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["symbol"]
+          },
+        ]
+      }
       stock_screener: {
         Row: {
           beta: number | null
