@@ -6,21 +6,20 @@ import { getHistoricalPricesForSymbol } from "@/api/historical-price/service"; /
 import type { Database } from "@/lib/supabase/database.types"; // Adjust path if needed
 
 // Define the shape of the data coming from your table using generated types
-// Ensure 'historical_prices' table and its columns ('date', 'close') exist in your Database types
 type HistoricalPrice = Database["public"]["Tables"]["historical_prices"]["Row"];
 
-// Define the response structure
+// Define the response structure (Removed 'message' field as per previous request)
 type MovingAverageResponse = {
   symbol: string;
-  latestDate?: string;
+  latestDate?: string; // Will be the requested date if provided and found
   latestClose?: number;
   movingAverages?: { [period: number]: number }; // e.g., { 20: 150.5, 50: 145.2 }
   error?: string;
-  message?: string; // For informational messages like data update check
 };
 
 // --- Configuration ---
-const DEFAULT_MA_PERIODS: number[] = [20, 50, 100, 200]; // Common MAs if 'n' isn't specified
+const DEFAULT_MA_PERIODS: number[] = [20, 50, 100, 200];
+const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/; // Basic YYYY-MM-DD format validation
 // ---
 
 export async function GET(
@@ -32,9 +31,11 @@ export async function GET(
 
   const { searchParams } = new URL(request.url);
   const nParam = searchParams.get("n");
+  const dateParam = searchParams.get("date"); // Get optional date parameter
 
   // --- Input Validation ---
   if (!symbol) {
+    // Should technically not happen if file structure is correct
     return NextResponse.json(
       { symbol: "", error: "Symbol parameter is missing in the URL path." },
       { status: 400 }
@@ -55,10 +56,22 @@ export async function GET(
       );
     }
   }
+
+  let targetDate: string | null = null;
+  if (dateParam) {
+    if (!DATE_REGEX.test(dateParam)) {
+      return NextResponse.json(
+        { symbol, error: 'Invalid "date" parameter format. Use YYYY-MM-DD.' },
+        { status: 400 }
+      );
+    }
+    targetDate = dateParam; // Use the validated date string
+  }
   // ---
 
   try {
     // --- Dependency Check & Data Update ---
+    // Keep this check to ensure the database is generally up-to-date
     try {
       console.log(
         `[MovingAverage] Checking/Updating historical prices for ${symbol}...`
@@ -68,7 +81,6 @@ export async function GET(
         `[MovingAverage] Historical price check/update complete for ${symbol}.`
       );
     } catch (updateError: unknown) {
-      // Use unknown for catch variable
       let errorMessage =
         "Failed dependency check: Could not ensure fresh historical prices.";
       if (updateError instanceof Error) {
@@ -93,28 +105,40 @@ export async function GET(
     const requiredDataPoints = maxPeriod;
     // ---
 
-    // --- Fetch Data from Supabase ---
+    // --- Fetch Data from Supabase (Modified Query) ---
     console.log(
-      `[MovingAverage] Fetching last ${requiredDataPoints} data points for ${symbol}...`
+      `[MovingAverage] Fetching last ${requiredDataPoints} data points for ${symbol} up to ${
+        targetDate ?? "latest"
+      }...`
     );
-    const supabase = getSupabaseServerClient(); // Assumes this returns SupabaseClient<Database>
-    const { data: prices, error: dbError } = await supabase
-      .from("historical_prices") // Correct table name
-      .select("date, close") // Select only needed columns
-      .eq("symbol", symbol)
-      .order("date", { ascending: false })
+    const supabase = getSupabaseServerClient();
+    // Start building the query
+    let query = supabase
+      .from("historical_prices")
+      .select("date, close")
+      .eq("symbol", symbol);
+
+    // Apply date filter *only* if targetDate is specified
+    if (targetDate) {
+      query = query.lte("date", targetDate); // Filter records on or before the target date
+    }
+
+    // Apply ordering and limit to the potentially filtered query
+    query = query
+      .order("date", { ascending: false }) // Still need latest first (up to targetDate)
       .limit(requiredDataPoints);
+
+    // Execute the query
+    const { data: prices, error: dbError } = await query;
 
     if (dbError) {
       console.error(
         `[MovingAverage] Supabase DB Error fetching prices for ${symbol}:`,
         dbError
       );
-      // Throwing here will be caught by the outer catch block
       throw new Error(`Supabase error: ${dbError.message}`);
     }
 
-    // Use stricter typing based on select query - results are partial objects
     const typedPrices = prices as
       | Pick<HistoricalPrice, "date" | "close">[]
       | null;
@@ -123,7 +147,24 @@ export async function GET(
       return NextResponse.json(
         {
           symbol,
-          error: `No historical data found for ${symbol} in the database.`,
+          error: `No historical data found for ${symbol}${
+            targetDate ? ` on or before ${targetDate}` : ""
+          }.`,
+        },
+        { status: 404 }
+      );
+    }
+    // ---
+
+    // --- Validate Target Date Found (if specified) ---
+    const latestPriceData = typedPrices[0]; // This is the record for the targetDate (or actual latest)
+
+    if (targetDate && latestPriceData.date !== targetDate) {
+      // No data found for the *exact* requested date, even though older data exists.
+      return NextResponse.json(
+        {
+          symbol,
+          error: `No data found for the specific date ${targetDate}. The most recent data available on or before this date is ${latestPriceData.date}.`,
         },
         { status: 404 }
       );
@@ -131,28 +172,26 @@ export async function GET(
     // ---
 
     // --- Calculate Moving Averages ---
-    const latestPriceData = typedPrices[0];
     const calculatedMAs: { [period: number]: number } = {};
 
     console.log(
-      `[MovingAverage] Calculating MAs for ${symbol}. Data points available: ${typedPrices.length}`
+      `[MovingAverage] Calculating MAs for ${symbol} ending ${latestPriceData.date}. Data points available for calc: ${typedPrices.length}`
     );
 
     for (const period of periodsToCalculate) {
+      // Check if enough data points *ending on the target date* were returned
       if (typedPrices.length >= period) {
         const pricesForPeriod = typedPrices.slice(0, period);
-        // Ensure 'close' is treated as a number, default to 0 if null/undefined
         const sum = pricesForPeriod.reduce(
           (acc, day) => acc + (day.close ?? 0),
           0
         );
         if (period > 0) {
-          // Avoid division by zero, though already checked by specificN > 0
           calculatedMAs[period] = parseFloat((sum / period).toFixed(2));
         }
       } else {
         console.log(
-          `[MovingAverage] Skipping ${period}-day MA for ${symbol}: Only ${typedPrices.length} data points available.`
+          `[MovingAverage] Skipping ${period}-day MA for ${symbol}: Only ${typedPrices.length} data points available up to ${latestPriceData.date}.`
         );
       }
     }
@@ -164,14 +203,13 @@ export async function GET(
       : undefined;
 
     if (specificN && calculatedMAs[specificN] === undefined) {
-      // Check if key exists
       return NextResponse.json(
         {
           symbol,
           latestDate: latestPriceData.date,
           latestClose: latestCloseValue,
           movingAverages: calculatedMAs,
-          error: `Not enough data (${typedPrices.length} points) to calculate the requested ${specificN}-day moving average for ${symbol}. Required: ${specificN}.`,
+          error: `Not enough data (${typedPrices.length} points) available up to ${latestPriceData.date} to calculate the requested ${specificN}-day moving average for ${symbol}. Required: ${specificN}.`,
         },
         { status: 400 }
       );
@@ -185,7 +223,9 @@ export async function GET(
           movingAverages: calculatedMAs,
           error: `Not enough data (${
             typedPrices.length
-          } points) to calculate any default moving averages (${DEFAULT_MA_PERIODS.join(
+          } points) available up to ${
+            latestPriceData.date
+          } to calculate any default moving averages (${DEFAULT_MA_PERIODS.join(
             ", "
           )}) for ${symbol}. Minimum required: ${Math.min(
             ...DEFAULT_MA_PERIODS
@@ -199,23 +239,21 @@ export async function GET(
     // --- Format and Return Successful Response ---
     const response: MovingAverageResponse = {
       symbol: symbol,
-      latestDate: latestPriceData.date,
+      latestDate: latestPriceData.date, // Date will be targetDate if provided and found
       latestClose: latestCloseValue,
       movingAverages: calculatedMAs,
+      // No message field included
     };
 
     return NextResponse.json(response, { status: 200 });
   } catch (error: unknown) {
-    // Use unknown for catch variable
     console.error(`[MovingAverage] General Error processing ${symbol}:`, error);
     let errorMessage = "Internal Server Error";
-    // Type guard to safely access error properties
     if (error instanceof Error) {
       errorMessage = error.message;
     } else if (typeof error === "string") {
       errorMessage = error;
     }
-    // Provide the symbol in the error response if available
     const errorSymbol = typeof symbol === "string" ? symbol : "unknown symbol";
     return NextResponse.json(
       { symbol: errorSymbol, error: errorMessage },
