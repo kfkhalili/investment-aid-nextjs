@@ -64,7 +64,7 @@ const ALL_SYMBOLS_TO_PROCESS: string[] = [
   "PGR", // The Progressive Corporation
   "GME", // GameStop Corp
 ];
-const BATCH_SIZE = 50;
+const BATCH_SIZE = 51;
 const MAs_REQUIRED: number[] = [50, 200];
 // ---
 

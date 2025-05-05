@@ -63,7 +63,8 @@ const SYMBOLS_TO_POPULATE: ReadonlyArray<string> = [
   "UBER", // Uber Technologies, Inc.
   "RTX", // RTX Corporation
   "BKNG", // Booking Holdings Inc.
-  "PGR", // The Progressive Corporation
+  "PGR", // The Progressive Corporation,
+  "GME", // GameStop Corp
 ];
 
 /**
