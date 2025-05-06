@@ -1,14 +1,12 @@
 /* ──────────────────────────────────────────────────────────────────────
- * app/api/profile/[symbol]/route.ts // <-- Correct path
+ * app/api/profile/[symbol]/route.ts
  * Handler for GET requests to /api/profile/[symbol]
  * Retrieves the company profile for a specific symbol.
  * ---------------------------------------------------------------------*/
 import { NextResponse } from "next/server";
 
-// 1. Import the specific service method for getting the profile
-import { getProfile } from "../service"; // Use the exported getOne equivalent
-// 2. Import the API response type
-import type { Profile } from "../service"; // Import Profile type
+import { getProfile } from "@/lib/services/profiles";
+import type { Profile } from "@/lib/services/profiles";
 
 /**
  * Handles GET requests to fetch the profile for a specific symbol.

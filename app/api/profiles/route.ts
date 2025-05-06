@@ -1,14 +1,12 @@
 /* ──────────────────────────────────────────────────────────────────────
- * app/api/profile/route.ts // <-- Correct path
+ * app/api/profile/route.ts
  * Handler for GET requests to /api/profile
  * Retrieves a list view of all company profiles.
  * ---------------------------------------------------------------------*/
 import { NextResponse } from "next/server";
 
-// 1. Import the specific service method for getting the list view
-import { getAllProfiles } from "./service";
-// 2. Import the API response type
-import type { Profile } from "./service";
+import { getAllProfiles } from "@/lib/services/profiles";
+import type { Profile } from "@/lib/services/profiles";
 
 /**
  * Handles GET requests to fetch a list of all company profiles.

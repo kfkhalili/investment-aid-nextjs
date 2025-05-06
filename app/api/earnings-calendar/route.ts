@@ -5,11 +5,8 @@
  * ---------------------------------------------------------------------*/
 import { NextResponse } from "next/server";
 
-// 1. Import the specific service method
-import { getEarningsCalendar } from "./service"; // Adjust path
-
-// 2. Import the API response type
-import type { EarningsCalendarApiItem } from "./service"; // Supabase version
+import { getEarningsCalendar } from "@/lib/services/earnings-calendar";
+import type { EarningsCalendarApiItem } from "@/lib/services/earnings-calendar";
 
 /**
  * Handles GET requests to fetch the latest earnings calendar.

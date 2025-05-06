@@ -5,11 +5,8 @@
  * ---------------------------------------------------------------------*/
 import { NextResponse } from "next/server";
 
-// 1. Import the specific service method for getting the list view
-import { getAllLatestGradesConsensus } from "./service"; // Adjust path
-
-// 2. Import the API response type
-import type { GradesConsensusApiItem } from "./service"; // Supabase version
+import { getAllLatestGradesConsensus } from "@/lib/services/grades-consensus";
+import type { GradesConsensusApiItem } from "@/lib/services/grades-consensus";
 
 /**
  * Handles GET requests to fetch a list of the latest grades consensus for all symbols.
