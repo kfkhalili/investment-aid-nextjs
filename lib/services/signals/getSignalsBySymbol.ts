@@ -1,43 +1,37 @@
 /* ──────────────────────────────────────────────────────────────────────
  * lib/services/signals/getSignalsBySymbol.ts
  * Service to fetch signals for a specific symbol.
- * It attempts to trigger signal generation processes and then fetches signals.
+ * It attempts to trigger all relevant signal generation processes
+ * (each handling its own staleness logic) and then fetches all signals.
  * ---------------------------------------------------------------------*/
 import { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseServerClient } from "@/lib/supabase/serverClient";
-import type { SignalRow } from "./types";
-// import { CACHE_TTL_MS } from "./constants"; // No longer used at this level
+import type { SignalRow } from "./types"; // Your generic SignalRow type
+
+// Import all individual signal processing services
+import { processSmaSignalsForSymbol } from "@/lib/services/signal-sma/service";
+import { processAnalystConsensusForSymbol } from "@/lib/services/signal-analyst-consensus/service";
+import { processEarningsSignalsForSymbol } from "@/lib/services/signal-earnings/service";
+import { processEmaSignalsForSymbol } from "@/lib/services/signal-ema/service";
+import { processMacdSignalsForSymbol } from "@/lib/services/signal-macd/service";
+import { processRsiSignalsForSymbol } from "@/lib/services/signal-rsi/service";
+
+// Define a type for the processing results from individual services for logging
+type IndividualSignalProcessingResult = {
+  processedSymbol: string;
+  signalsGenerated: number;
+  status: string;
+  error?: string;
+  latestSignalDate?: string | null;
+};
 
 const SIGNALS_TABLE_NAME = "signals";
-
-// --- Placeholder for your actual signal generation services ---
-// These functions would be responsible for calculating and inserting new signal rows.
-// They (or the specific generators they call) should ideally handle their own
-// staleness checks to avoid redundant operations.
-async function generateTechnicalSignals(symbol: string): Promise<void> {
-  console.log(
-    `[SignalGen] Placeholder: Attempting to generate technical signals for ${symbol}...`
-  );
-  // Example: await someTechnicalSignalService.generateForSymbol(symbol);
-  // This function (or the service it calls) should ideally check its own staleness
-  // before performing computationally expensive generation.
-  return Promise.resolve();
-}
-
-async function generateEventBasedSignals(symbol: string): Promise<void> {
-  console.log(
-    `[SignalGen] Placeholder: Attempting to generate event-based signals for ${symbol}...`
-  );
-  // Example: await someEventSignalService.generateForSymbol(symbol);
-  return Promise.resolve();
-}
-// --- End Placeholder ---
 
 /**
  * Fetches all signals for a given symbol directly from Supabase.
  * @param supabase Supabase client instance.
  * @param symbol The stock symbol.
- * @returns Promise<SignalRow[]> An array of signal rows.
+ * @returns Promise<SignalRow[]> An array of signal rows. Returns empty array on error.
  */
 async function fetchSignalsFromDb(
   supabase: SupabaseClient,
@@ -47,16 +41,14 @@ async function fetchSignalsFromDb(
     .from(SIGNALS_TABLE_NAME)
     .select("*") // Fetches all columns defined in SignalRow
     .eq("symbol", symbol.toUpperCase())
-    .order("signal_date", { ascending: false }); // Optional: order by date
+    .order("signal_date", { ascending: false });
 
   if (error) {
     console.error(
-      `[SignalSvc] Error fetching signals from DB for ${symbol}:`,
-      error
+      `[SignalSvc][fetchSignalsFromDb] Error fetching signals from DB for ${symbol}:`,
+      error.message
     );
-    throw new Error(
-      `Database error fetching signals for ${symbol}: ${error.message}`
-    );
+    return []; // Return empty array on error, allowing the main function to proceed
   }
   // Ensure an array is always returned, even if data is null/undefined
   return (data as SignalRow[] | null)?.slice() || [];
@@ -64,9 +56,9 @@ async function fetchSignalsFromDb(
 
 /**
  * Fetches signals for a given symbol.
- * This function will first attempt to trigger signal generation processes
- * and then fetch all available signals for the symbol from the database.
- * The underlying generation services should manage their own staleness logic.
+ * This function will first attempt to trigger all relevant signal generation processes
+ * (each handling its own staleness logic) and then fetch all available signals
+ * for the symbol from the database.
  *
  * @param symbol The stock symbol.
  * @returns Promise<SignalRow[]> An array of signal rows for the symbol.
@@ -78,40 +70,54 @@ export async function getSignalsForSymbol(
   const upperSymbol = symbol.toUpperCase();
 
   console.log(
-    `[SignalSvc] Processing signals for symbol: ${upperSymbol}. Attempting to trigger generation services first.`
+    `[SignalSvc][getSignalsForSymbol] Orchestrating signal generation for symbol: ${upperSymbol}.`
   );
 
-  try {
-    // Attempt to trigger all relevant signal generation services.
-    // These services (or the more specific modules they utilize)
-    // should be responsible for their own internal staleness checks
-    // to prevent unnecessary recalculations if data is already fresh.
-    await generateTechnicalSignals(upperSymbol);
-    await generateEventBasedSignals(upperSymbol);
-    // Add more generation service calls if needed for other categories
+  // Pass the Supabase client to each service to avoid multiple client creations if preferred
+  const generationPromises = [
+    processSmaSignalsForSymbol(upperSymbol, supabase),
+    processAnalystConsensusForSymbol(upperSymbol, supabase),
+    processEarningsSignalsForSymbol(upperSymbol, supabase),
+    processEmaSignalsForSymbol(upperSymbol, supabase),
+    processMacdSignalsForSymbol(upperSymbol, supabase),
+    processRsiSignalsForSymbol(upperSymbol, supabase),
+    // Add calls to other signal processors here as they are developed
+  ];
 
-    console.log(
-      `[SignalSvc] Signal generation attempt phase complete for ${upperSymbol}.`
-    );
-  } catch (generationError: unknown) {
-    console.error(
-      `[SignalSvc] Error during signal generation attempt phase for ${upperSymbol}:`,
-      generationError
-    );
-    // Depending on requirements, you might:
-    // 1. Re-throw the error if fresh signals are critical and partial data is unacceptable.
-    // 2. Log the error and proceed to fetch potentially stale/incomplete data.
-    // For now, re-throwing to make failure explicit.
-    throw new Error(
-      `Signal generation attempt phase failed for ${upperSymbol}: ${
-        generationError instanceof Error
-          ? generationError.message
-          : String(generationError)
-      }`
-    );
-  }
+  // Use Promise.allSettled to run all generation attempts and not fail if one has an issue
+  const results = await Promise.allSettled(generationPromises);
 
-  // After attempting generation, always fetch the current state of signals from the DB.
-  console.log(`[SignalSvc] Fetching all signals from DB for ${upperSymbol}.`);
+  console.log(
+    `[SignalSvc][getSignalsForSymbol] Signal generation attempt phase complete for ${upperSymbol}. Results:`
+  );
+  const serviceNames: string[] = [
+    "SMA",
+    "AnalystConsensus",
+    "Earnings",
+    "EMA",
+    "MACD",
+    "RSI",
+  ];
+
+  results.forEach((result, index) => {
+    const serviceName = serviceNames[index] || `Service ${index + 1}`;
+    if (result.status === "fulfilled") {
+      // Type assertion for result.value to access its properties
+      const value = result.value as IndividualSignalProcessingResult;
+      console.log(
+        `  - ${serviceName}: Success - Status: ${value.status}, Generated: ${
+          value.signalsGenerated
+        }${value.error ? `, Error: ${value.error}` : ""}`
+      );
+    } else {
+      // result.reason is the error thrown by the promise
+      console.error(`  - ${serviceName}: Failed - Reason:`, result.reason);
+    }
+  });
+
+  // After attempting all generations (successfully or not), fetch the current state of signals.
+  console.log(
+    `[SignalSvc][getSignalsForSymbol] Fetching all signals from DB for ${upperSymbol} after generation attempts.`
+  );
   return await fetchSignalsFromDb(supabase, upperSymbol);
 }
