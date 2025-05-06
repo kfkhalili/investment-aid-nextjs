@@ -1,3 +1,6 @@
+Need to install the following packages:
+supabase@2.22.12
+Ok to proceed? (y) 
 export type Json =
   | string
   | number
@@ -189,6 +192,13 @@ export type Database = {
             foreignKeyName: "fk_balance_sheet_symbol"
             columns: ["symbol"]
             isOneToOne: false
+            referencedRelation: "profile_symbols"
+            referencedColumns: ["symbol"]
+          },
+          {
+            foreignKeyName: "fk_balance_sheet_symbol"
+            columns: ["symbol"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["symbol"]
           },
@@ -332,6 +342,13 @@ export type Database = {
             foreignKeyName: "fk_cash_flow_symbol"
             columns: ["symbol"]
             isOneToOne: false
+            referencedRelation: "profile_symbols"
+            referencedColumns: ["symbol"]
+          },
+          {
+            foreignKeyName: "fk_cash_flow_symbol"
+            columns: ["symbol"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["symbol"]
           },
@@ -372,6 +389,13 @@ export type Database = {
           symbol?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_earnings_calendar_symbol"
+            columns: ["symbol"]
+            isOneToOne: false
+            referencedRelation: "profile_symbols"
+            referencedColumns: ["symbol"]
+          },
           {
             foreignKeyName: "fk_earnings_calendar_symbol"
             columns: ["symbol"]
@@ -419,6 +443,13 @@ export type Database = {
           symbol?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_grades_symbol"
+            columns: ["symbol"]
+            isOneToOne: false
+            referencedRelation: "profile_symbols"
+            referencedColumns: ["symbol"]
+          },
           {
             foreignKeyName: "fk_grades_symbol"
             columns: ["symbol"]
@@ -484,6 +515,13 @@ export type Database = {
           vwap?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_historical_price_symbol"
+            columns: ["symbol"]
+            isOneToOne: false
+            referencedRelation: "profile_symbols"
+            referencedColumns: ["symbol"]
+          },
           {
             foreignKeyName: "fk_historical_price_symbol"
             columns: ["symbol"]
@@ -621,6 +659,13 @@ export type Database = {
           weighted_average_shs_out_dil?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_income_symbol"
+            columns: ["symbol"]
+            isOneToOne: false
+            referencedRelation: "profile_symbols"
+            referencedColumns: ["symbol"]
+          },
           {
             foreignKeyName: "fk_income_symbol"
             columns: ["symbol"]
@@ -792,6 +837,13 @@ export type Database = {
             foreignKeyName: "fk_signals_symbol"
             columns: ["symbol"]
             isOneToOne: false
+            referencedRelation: "profile_symbols"
+            referencedColumns: ["symbol"]
+          },
+          {
+            foreignKeyName: "fk_signals_symbol"
+            columns: ["symbol"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["symbol"]
           },
@@ -859,7 +911,12 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      profile_symbols: {
+        Row: {
+          symbol: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never
