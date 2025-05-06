@@ -6,15 +6,12 @@
  * ---------------------------------------------------------------------*/
 import { NextResponse } from "next/server";
 
-// 1. Import service methods for BOTH profile and income statement
-import { getProfile } from "@/api/profiles/service";
+import { getProfile } from "@/lib/services/profiles";
 import {
   getIncomeStatementsForSymbol,
   getLatestIncomeStatement,
-} from "../service"; // Adjust path as needed (ensure this points to SUPABASE service index)
-
-// 2. Import the API response type
-import type { IncomeStatement } from "../service"; // Should be Supabase version
+} from "@/lib/services/income-statements";
+import type { IncomeStatement } from "@/lib/services/income-statements";
 
 /**
  * Handles GET requests for a specific symbol.

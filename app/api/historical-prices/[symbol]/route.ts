@@ -1,16 +1,13 @@
 /* ──────────────────────────────────────────────────────────────────────
- * app/api/historical-price/[symbol]/route.ts (Supabase Version)
+ * app/api/historical-prices/[symbol]/route.ts
  * Handler for GET requests to fetch historical price data for a symbol.
  * Ensures profile exists before fetching historical data.
  * ---------------------------------------------------------------------*/
 import { NextResponse } from "next/server";
 
-// 1. Import service methods for Profile AND Historical Price
-import { getProfile } from "@/api/profiles/service";
-import { getHistoricalPricesForSymbol } from "../service";
-
-// 2. Import the Row type (returned by the service)
-import type { HistoricalPriceRow } from "../service"; // Supabase version
+import { getProfile } from "@/lib/services/profiles";
+import { getHistoricalPricesForSymbol } from "@/lib/services/historical-prices";
+import type { HistoricalPriceRow } from "@/lib/services/historical-prices";
 
 // Optional: Import common helpers if needed for final shaping/ordering
 // import { historicalPriceKeyOrder } from '../service/constants';

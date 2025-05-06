@@ -1,5 +1,5 @@
 // app/profiles/page.tsx
-import { getAllProfiles } from "@/api/profiles/service";
+import { getAllProfiles } from "@/lib/services/profiles";
 import { SmartTable } from "@/components/SmartTable";
 
 export const revalidate = 60;

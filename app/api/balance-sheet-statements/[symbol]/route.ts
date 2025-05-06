@@ -6,15 +6,14 @@
  * ---------------------------------------------------------------------*/
 import { NextResponse } from "next/server";
 
-// 1. Import service methods for BOTH profile and balance sheet
-import { getProfile } from "@/api/profiles/service";
+import { getProfile } from "@/lib/services/profiles";
 import {
   getBalanceSheetStatementsForSymbol,
   getLatestBalanceSheetStatement,
-} from "../service"; // Adjust path (ensure this points to SUPABASE service index)
+} from "@/lib/services/balance-sheet-statements";
 
 // 2. Import the API response type
-import type { BalanceSheetStatement } from "../service"; // Supabase version
+import type { BalanceSheetStatement } from "@/lib/services/balance-sheet-statements";
 
 /**
  * Handles GET requests.

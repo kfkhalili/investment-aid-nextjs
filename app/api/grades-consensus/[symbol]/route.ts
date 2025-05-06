@@ -7,15 +7,14 @@
 import { NextResponse } from "next/server";
 import { isValid, parseISO } from "date-fns"; // Using date-fns for validation
 
-// 1. Import service methods for Profile AND Grades Consensus
-import { getProfile } from "@/api/profiles/service"; // Adjust path
+import { getProfile } from "@/lib/services/profiles";
 import {
   getLatestGradesConsensus,
-  getGradesConsensusForDateAndSymbol, // Import BOTH service functions
-} from "../service"; // Adjust path
+  getGradesConsensusForDateAndSymbol,
+} from "@/lib/services/grades-consensus";
 
 // 2. Import the API response type
-import type { GradesConsensusApiItem } from "../service"; // Supabase version
+import type { GradesConsensusApiItem } from "@/lib/services/grades-consensus";
 
 // --- Type Guard for Potential Error Structure ---
 function errorHasCode(
