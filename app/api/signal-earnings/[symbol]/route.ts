@@ -4,8 +4,8 @@ import { processEarningsSignalsForSymbol } from "@/lib/services/signal-earnings/
 import type { EarningsProcessingResult } from "@/lib/services/signal-earnings/service";
 
 export async function GET(
-  request: Request, // Keep for standard signature, even if not directly used
-  { params }: { params: Promise<{ symbol: string }> } // Next.js 13+ direct params
+  request: Request,
+  { params }: { params: Promise<{ symbol: string }> }
 ): Promise<NextResponse> {
   // Access symbol directly from params, uppercase it
   const { symbol: symbolParam } = await params;
