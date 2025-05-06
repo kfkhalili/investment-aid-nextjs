@@ -219,7 +219,7 @@ export default function Home() {
               ))}
           {!isLoading && signals.length === 0 && !error && (
             <div className="col-span-full text-center text-muted-foreground py-10">
-              No relevant market signals found for the '{activeFilter}' filter.
+              No relevant market signals found for the `{activeFilter}` filter.
               Try adjusting preferences or check back later.
             </div>
           )}
