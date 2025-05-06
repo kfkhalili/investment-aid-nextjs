@@ -11,10 +11,10 @@ import { getProfile } from "@/api/profiles/service";
 import {
   getBalanceSheetStatementsForSymbol,
   getLatestBalanceSheetStatement,
-} from "../service"; // Adjust path (ensure this points to SUPABASE service index)
+} from "@/lib/services/balance-sheet-statements";
 
 // 2. Import the API response type
-import type { BalanceSheetStatement } from "../service"; // Supabase version
+import type { BalanceSheetStatement } from "@/lib/services/balance-sheet-statements";
 
 /**
  * Handles GET requests.

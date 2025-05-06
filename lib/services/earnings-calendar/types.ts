@@ -41,8 +41,12 @@ const bigIntOrNull = (value: number | null | undefined): number | null => {
 };
 // Helper for date strings, defaulting to null
 const dateStringOrNull = (value: string | null | undefined): string | null => {
-  // Add validation if needed, e.g., check YYYY-MM-DD format
-  return value ?? null;
+  // Basic check, though processRawDataArray does more thorough validation now for item.date
+  if (value && typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return value;
+  }
+  if (value === null || value === undefined) return null;
+  return typeof value === "string" ? value : null;
 };
 
 /**
@@ -51,15 +55,18 @@ const dateStringOrNull = (value: string | null | undefined): string | null => {
  * Handles defaults (null).
  */
 export const mapRawEarningsCalendarToRow = (
-  raw: RawEarningsCalendarItem
+  raw: RawEarningsCalendarItem // Receives data processed by processEarningsCalendarRawData
 ): Omit<EarningsCalendarRow, "id" | "created_at" | "modified_at"> => {
   return {
-    symbol: raw.symbol, // REQUIRED
-    date: dateStringOrNull(raw.date)!, // REQUIRED in DB, assert non-null after check or provide default
+    symbol: raw.symbol,
+    // raw.date is guaranteed to be a non-null, 'YYYY-MM-DD' string by processEarningsCalendarRawData
+    date: raw.date!, // The '!' non-null assertion is now safe.
     eps_actual: doubleOrNull(raw.epsActual),
     eps_estimated: doubleOrNull(raw.epsEstimated),
-    revenue_actual: bigIntOrNull(raw.revenueActual), // Assuming BIGINT
-    revenue_estimated: bigIntOrNull(raw.revenueEstimated), // Assuming BIGINT
-    last_updated: dateStringOrNull(raw.lastUpdated), // Map camelCase
+    revenue_actual: bigIntOrNull(raw.revenueActual),
+    revenue_estimated: bigIntOrNull(raw.revenueEstimated),
+    // For last_updated (DB type DATE NULL): FMP might provide a full datetime string or just a date.
+    // PostgreSQL's DATE type will truncate time if present.
+    last_updated: dateStringOrNull(raw.lastUpdated),
   };
 };

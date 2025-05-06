@@ -5,10 +5,8 @@
  * ---------------------------------------------------------------------*/
 import { NextResponse } from "next/server";
 
-// 1. Import the specific service method for getting the list view
-import { getAllBalanceSheetStatements } from "./service";
-// 2. Import the API response type (optional but good practice)
-import type { BalanceSheetStatement } from "./service";
+import { getAllBalanceSheetStatements } from "@/lib/services/balance-sheet-statements";
+import type { BalanceSheetStatement } from "@/lib/services/balance-sheet-statements";
 
 /**
  * Handles GET requests to fetch a list of balance sheet statements.
@@ -17,7 +15,7 @@ import type { BalanceSheetStatement } from "./service";
 export async function GET(): Promise<
   NextResponse<Partial<BalanceSheetStatement>[] | { error: string }>
 > {
-  console.log("GET /api/balance-sheet-statement called"); // Optional: Logging
+  console.log("GET /api/balance-sheet-statement called");
 
   try {
     // Call the service function to get the data.

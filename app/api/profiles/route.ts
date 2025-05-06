@@ -15,7 +15,7 @@ import type { Profile } from "./service";
  * Uses the underlying service which returns projected data based on configuration.
  */
 export async function GET(): Promise<
-  NextResponse<Partial<Profile>[] | { error: string }> // <-- Use Partial<Profile>[]
+  NextResponse<Partial<Profile>[] | { error: string }>
 > {
   console.log("GET /api/profile called"); // Optional: Logging
 

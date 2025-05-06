@@ -6,15 +6,14 @@
  * ---------------------------------------------------------------------*/
 import { NextResponse } from "next/server";
 
-// 1. Import service methods for Profile AND Cash Flow Statement
-import { getProfile } from "@/api/profiles/service";
+import { getProfile } from "@/lib/services/profiles";
 import {
-  getCashFlowStatementsForSymbol, // Use correct cash flow function
-  getLatestCashFlowStatement, // Use correct cash flow function
-} from "../service"; // Ensure this path points to SUPABASE cash flow service index
+  getCashFlowStatementsForSymbol,
+  getLatestCashFlowStatement,
+} from "@/lib/services/cash-flow-statements";
 
 // 2. Import the API response type
-import type { CashFlowStatement } from "../service"; // Supabase version
+import type { CashFlowStatement } from "@/lib/services/cash-flow-statements";
 
 /**
  * Handles GET requests for a specific symbol's cash flow statements.

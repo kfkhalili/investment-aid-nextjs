@@ -5,10 +5,8 @@
  * ---------------------------------------------------------------------*/
 import { NextResponse } from "next/server";
 
-// 1. Import the service method for getting the list view
-import { getAllCashFlowStatements } from "./service";
-// 2. Import the API response type (optional but good practice)
-import type { CashFlowStatement } from "./service";
+import { getAllCashFlowStatements } from "@/lib/services/cash-flow-statements";
+import type { CashFlowStatement } from "@/lib/services/cash-flow-statements";
 
 /**
  * Handles GET requests to fetch a list of income statements.
