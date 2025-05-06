@@ -4,10 +4,6 @@
  * ---------------------------------------------------------------------*/
 import type { SignalApiItem } from "./types";
 
-/** Cache Time-To-Live: How long calculated signal data is considered fresh. */
-// Example: 1 hour, adjust based on how often signals are recalculated
-export const CACHE_TTL_MS = 1000 * 60 * 60 * 1;
-
 /**
  * Defines the desired order and selection of keys for the Signal API response.
  * Uses snake_case keys from SignalApiItem based on the signals table DDL.
