@@ -3,12 +3,14 @@
 import { useState, useEffect, useRef } from "react"; // Import useRef
 import type { GenerateMarketSignalsOutput } from "@/ai/flows/generate-market-signals"; // Updated import type
 import { generateMarketSignals } from "@/ai/flows/generate-market-signals"; // Updated import
-import SignalCard from "@/components/signal-card";
+import SignalCard from "@/components/SignalCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button"; // Import Button
 import { Terminal } from "lucide-react";
 import { cn } from "@/lib/utils"; // Import cn utility
+import { StyledSignUpButton } from "./components/StyledClerk";
+import { SignedOut } from "@clerk/nextjs";
 
 // Placeholder user preferences - In a real app, these would come from auth/user profile
 const placeholderUserPreferences = {
@@ -48,9 +50,9 @@ export default function Home() {
   const [signals, setSignals] = useState<MarketSignal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeFilter, setActiveFilter] = useState<"popular" | "trending">(
-    "popular"
-  ); // State for active filter
+  const [activeFilter, setActiveFilter] = useState<
+    "all" | "popular" | "trending"
+  >("all"); // State for active filter
   const filterSectionRef = useRef<HTMLDivElement>(null); // Ref for the filter section
 
   useEffect(() => {
@@ -107,7 +109,7 @@ export default function Home() {
   }, [activeFilter]); // Refetch signals when activeFilter changes
 
   // Function to handle filter change and scroll
-  const handleFilterChange = (newFilter: "popular" | "trending") => {
+  const handleFilterChange = (newFilter: "all" | "popular" | "trending") => {
     // Scroll the filter section into view
     if (filterSectionRef.current) {
       // Use block: 'start' to align the top of the element with the top of the scroll container (or just below sticky header)
@@ -122,84 +124,85 @@ export default function Home() {
 
   return (
     <div>
-      {" "}
-      {/* Removed container mx-auto and padding from here */}
-      {/* Header Section - Updated Text Styles */}
-      <div className="container mx-auto px-4">
-        {" "}
-        {/* Added container/padding here */}
-        <div className="flex flex-col items-center justify-center text-center min-h-[40vh] mb-12">
-          {" "}
-          {/* Reduced min-h from 50vh to 40vh */}
-          <h1 className="text-5xl sm:text-6xl uppercase mb-0 font-bold font-['FaktCondensed',_AvenirNextCondensed-Medium,_'Segoe_UI',_sans-serif]">
-            {" "}
-            {/* Reduced mb */}
-            Spot the Trends
-          </h1>
-          <h2 className="text-5xl sm:text-6xl uppercase underline decoration-primary decoration-[12px] underline-offset-8 mb-6 font-bold font-['FaktCondensed',_AvenirNextCondensed-Medium,_'Segoe_UI',_sans-serif] -mt-2">
-            {" "}
-            {/* Added negative mt */}
-            See the Moves
-          </h2>
-          <p className="text-lg sm:text-xl text-foreground/80 max-w-2xl mb-8">
-            Market Signals, Simplified
-          </p>
-          {/* Centered Sign Up Button */}
-          <Button size="lg">Sign up</Button>
-        </div>
-      </div>
-      {/* Error Alert (inside container) */}
-      {error && (
+      <SignedOut>
         <div className="container mx-auto px-4">
-          <Alert variant="destructive" className="mb-6">
-            <Terminal className="h-4 w-4" />
-            <AlertTitle>Error</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        </div>
-      )}
-      {/* Filter Buttons Section - Made sticky */}
-      {/* Use theme(spacing.14) which corresponds to h-14 of the header */}
-      <div
-        ref={filterSectionRef}
-        id="filter-section"
-        className="sticky top-[theme(spacing.14)] z-20 bg-background border-b mb-6"
-      >
-        {" "}
-        {/* Added ref and id */}
-        <div className="container mx-auto px-4 py-4">
-          {" "}
-          {/* Container for content alignment + padding */}
-          <div className="flex justify-center sm:justify-start gap-4">
-            <Button
-              variant="ghost" // Use ghost for minimal styling
-              onClick={() => handleFilterChange("popular")} // Use handler
-              className={cn(
-                "uppercase tracking-wider font-semibold hover:bg-transparent hover:text-primary focus-visible:ring-0 focus-visible:ring-offset-0", // Only change text color on hover, remove focus ring
-                {
-                  "text-primary": activeFilter === "popular", // Style for active button
-                  "text-muted-foreground": activeFilter !== "popular", // Dimmer color for inactive
-                }
-              )}
-            >
-              Popular
-            </Button>
-            <Button
-              variant="ghost" // Use ghost for minimal styling
-              onClick={() => handleFilterChange("trending")} // Use handler
-              className={cn(
-                "uppercase tracking-wider font-semibold hover:bg-transparent hover:text-primary focus-visible:ring-0 focus-visible:ring-offset-0", // Only change text color on hover, remove focus ring
-                {
-                  "text-primary": activeFilter === "trending", // Style for active button
-                  "text-muted-foreground": activeFilter !== "trending", // Dimmer color for inactive
-                }
-              )}
-            >
-              Trending
-            </Button>
+          <div className="flex flex-col items-center justify-center text-center min-h-[40vh] mb-12">
+            <h1 className="text-5xl sm:text-6xl uppercase mb-0 font-bold font-['FaktCondensed',_AvenirNextCondensed-Medium,_'Segoe_UI',_sans-serif]">
+              Spot the Trends
+            </h1>
+            <h2 className="text-5xl sm:text-6xl uppercase underline decoration-primary decoration-[12px] underline-offset-8 mb-6 font-bold font-['FaktCondensed',_AvenirNextCondensed-Medium,_'Segoe_UI',_sans-serif] -mt-2">
+              See the Moves
+            </h2>
+            <p className="text-lg sm:text-xl text-foreground/80 max-w-2xl mb-8">
+              Market Signals, Simplified
+            </p>
+            <StyledSignUpButton>
+              <Button size="lg">Sign up</Button>
+            </StyledSignUpButton>
           </div>
         </div>
-      </div>
+        {/* Error Alert (inside container) */}
+        {error && (
+          <div className="container mx-auto px-4">
+            <Alert variant="destructive" className="mb-6">
+              <Terminal className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          </div>
+        )}
+        {/* Filter Buttons Section - Made sticky */}
+        {/* Use theme(spacing.14) which corresponds to h-14 of the header */}
+        <div
+          ref={filterSectionRef}
+          id="filter-section"
+          className="sticky top-[theme(spacing.14)] z-20 bg-background border-b mb-6"
+        >
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex justify-center sm:justify-start gap-4">
+              <Button
+                variant="ghost" // Use ghost for minimal styling
+                onClick={() => handleFilterChange("all")} // Use handler
+                className={cn(
+                  "uppercase tracking-wider font-semibold hover:bg-transparent hover:text-primary focus-visible:ring-0 focus-visible:ring-offset-0", // Only change text color on hover, remove focus ring
+                  {
+                    "text-primary": activeFilter === "all", // Style for active button
+                    "text-muted-foreground": activeFilter !== "all", // Dimmer color for inactive
+                  }
+                )}
+              >
+                All
+              </Button>
+              <Button
+                variant="ghost" // Use ghost for minimal styling
+                onClick={() => handleFilterChange("popular")} // Use handler
+                className={cn(
+                  "uppercase tracking-wider font-semibold hover:bg-transparent hover:text-primary focus-visible:ring-0 focus-visible:ring-offset-0", // Only change text color on hover, remove focus ring
+                  {
+                    "text-primary": activeFilter === "popular", // Style for active button
+                    "text-muted-foreground": activeFilter !== "popular", // Dimmer color for inactive
+                  }
+                )}
+              >
+                Popular
+              </Button>
+              <Button
+                variant="ghost" // Use ghost for minimal styling
+                onClick={() => handleFilterChange("trending")} // Use handler
+                className={cn(
+                  "uppercase tracking-wider font-semibold hover:bg-transparent hover:text-primary focus-visible:ring-0 focus-visible:ring-offset-0", // Only change text color on hover, remove focus ring
+                  {
+                    "text-primary": activeFilter === "trending", // Style for active button
+                    "text-muted-foreground": activeFilter !== "trending", // Dimmer color for inactive
+                  }
+                )}
+              >
+                Trending
+              </Button>
+            </div>
+          </div>
+        </div>
+      </SignedOut>
       {/* Signal Cards Grid (inside container) */}
       <div className="container mx-auto px-4 pb-8">
         {" "}
