@@ -80,7 +80,6 @@ export default function AuthControls({ className = "" }: Props) {
       <SignedIn>
         <UserButton
           key={`user-${resolvedTheme}`}
-          afterSignOutUrl="/"
           appearance={{
             ...appearance,
             elements: {

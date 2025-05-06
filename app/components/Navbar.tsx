@@ -2,6 +2,7 @@ import type { FC } from "react";
 import { ThemeToggle } from "@/components/theme-toggle"; // Import the ThemeToggle component
 import { Button } from "./ui/button";
 import { cn } from "@/lib/utils";
+import { SignUpButton, SignInButton } from "@clerk/nextjs";
 
 const Navbar: FC = () => {
   return (
@@ -10,15 +11,15 @@ const Navbar: FC = () => {
       <div className="ml-auto flex items-center gap-2">
         <ThemeToggle />
         <Button variant="default" size="sm">
-          Sign up
+          <SignUpButton mode="modal" />
         </Button>
         <Button
           variant="ghost"
           size="sm"
           className={cn("hover:bg-transparent hover:text-primary")}
         >
-          Login
-        </Button>{" "}
+          <SignInButton mode="modal"></SignInButton>
+        </Button>
       </div>
     </header>
   );
