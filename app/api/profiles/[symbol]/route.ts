@@ -15,9 +15,6 @@ export async function GET(
   request: Request, // Keep request for potential future use (e.g., headers)
   { params }: { params: Promise<{ symbol: string }> }
 ): Promise<NextResponse<Partial<Profile> | { error: string }>> {
-  // Return single Partial<Profile> or error
-  // Get and uppercase the symbol from the route parameters
-
   const { symbol: symbolParam } = await params;
   const symbol = symbolParam?.toUpperCase();
 

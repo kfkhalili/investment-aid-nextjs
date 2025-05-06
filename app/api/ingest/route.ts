@@ -1,130 +1,51 @@
-/* ──────────────────────────────────────────────────────────────────────
- * app/api/fetch/route.ts
- * Handler for GET requests to trigger data population for multiple symbols
- * (in batches with dynamically configurable size) and the earnings calendar (on batch 1).
- * Includes Bearer token authentication.
- * ---------------------------------------------------------------------*/
+// app/api/fetch/route.ts
 import { NextRequest, NextResponse } from "next/server";
-
-import { getProfile } from "@/lib/services/profiles";
-import { getIncomeStatementsForSymbol } from "@/lib/services/income-statements";
-import { getBalanceSheetStatementsForSymbol } from "@/lib/services/balance-sheet-statements";
-import { getCashFlowStatementsForSymbol } from "@/lib/services/cash-flow-statements";
-import { getHistoricalPricesForSymbol } from "@/lib/services/historical-prices";
-import { getLatestGradesConsensus } from "@/lib/services/grades-consensus";
-import { getEarningsCalendar } from "@/lib/services/earnings-calendar";
-
 import { getSupabaseServerClient } from "@/lib/supabase/serverClient";
+import {
+  fetchAllSymbols,
+  processSymbolData,
+  type SymbolProcessingResult,
+} from "@/lib/services/ingest";
+import { getEarningsCalendar } from "@/lib/services/earnings-calendar"; // For global earnings calendar
 
-interface SymbolResultDetails {
-  profile: string;
-  income: string;
-  balance: string;
-  cashflow: string;
-  historicalprice: string;
-  gradesconsensus: string;
-}
-
-interface SymbolProcessingResult {
-  symbol: string;
-  status: "Success" | "Failed";
-  details: SymbolResultDetails;
-  error?: string;
-}
-
-const STATEMENT_TYPES = [
-  "income",
-  "balance",
-  "cashflow",
-  "historicalprice",
-  "gradesconsensus",
-] as const;
-type StatementType = (typeof STATEMENT_TYPES)[number];
-
-async function fetchSymbols(): Promise<string[]> {
-  const client = getSupabaseServerClient();
-  const { data, error } = await client.from("profile_symbols").select("symbol");
-
-  if (error) {
-    console.error("Error fetching symbols from database:", error.message);
-    throw new Error(`Failed to fetch symbols: ${error.message}`);
-  }
-
-  if (!data) {
-    console.warn(
-      "No data returned when fetching symbols, though no explicit error."
-    );
-    return [];
-  }
-
-  return data
-    .map((item: { symbol: string | null }) => item.symbol)
-    .filter(
-      (symbol): symbol is string =>
-        typeof symbol === "string" && symbol.length > 0
-    );
-}
-
-function processSettledResult(
-  result: PromiseSettledResult<unknown>,
-  errorMessagePrefix: string = "Failed"
-): string {
-  if (result.status === "fulfilled") {
-    return "Success";
-  }
-  const reason = result.reason;
-  if (reason instanceof Error) {
-    return `${errorMessagePrefix}: ${reason.message}`;
-  }
-  if (typeof reason === "string") {
-    return `${errorMessagePrefix}: ${reason}`;
-  }
-  if (typeof reason === "object" && reason !== null) {
-    try {
-      return `${errorMessagePrefix}: ${JSON.stringify(reason)}`;
-    } catch {
-      return `${errorMessagePrefix}: Non-serializable object reason`;
-    }
-  }
-  return `${errorMessagePrefix}: Unknown error reason type (${typeof reason})`;
-}
-
+/**
+ * Determines the batch size based on query parameters, environment variables, or a default.
+ * @param searchParams URLSearchParams from the request.
+ * @returns The determined batch size.
+ */
 function determineBatchSize(searchParams: URLSearchParams): number {
-  const defaultHardcodedBatchSize = 5;
+  const defaultHardcodedBatchSize = 5; // Default if no other config is found
 
-  // 1. Try query parameter 'size'
   const sizeParam = searchParams.get("size");
   if (sizeParam) {
     const parsedQuerySize = parseInt(sizeParam, 10);
     if (!isNaN(parsedQuerySize) && parsedQuerySize > 0) {
       console.log(
-        `[Config] Batch size set from 'size' query parameter: ${parsedQuerySize}`
+        `[API FetchData ALL][Config] Batch size from 'size' query: ${parsedQuerySize}`
       );
       return parsedQuerySize;
     }
     console.warn(
-      `[Config] Invalid 'size' query parameter: '${sizeParam}'. Falling back to ENV or default.`
+      `[API FetchData ALL][Config] Invalid 'size' query: '${sizeParam}'. Falling back.`
     );
   }
 
-  // 2. Try environment variable CRON_FETCH_BATCH_SIZE
   const envBatchSizeConfig = process.env.CRON_FETCH_BATCH_SIZE;
   if (envBatchSizeConfig) {
     const parsedEnvSize = parseInt(envBatchSizeConfig, 10);
     if (!isNaN(parsedEnvSize) && parsedEnvSize > 0) {
       console.log(
-        `[Config] Batch size set from CRON_FETCH_BATCH_SIZE environment variable: ${parsedEnvSize}`
+        `[API FetchData ALL][Config] Batch size from CRON_FETCH_BATCH_SIZE env: ${parsedEnvSize}`
       );
       return parsedEnvSize;
     }
     console.warn(
-      `[Config] Invalid CRON_FETCH_BATCH_SIZE: '${envBatchSizeConfig}'. Falling back to default.`
+      `[API FetchData ALL][Config] Invalid CRON_FETCH_BATCH_SIZE: '${envBatchSizeConfig}'. Falling back.`
     );
   }
 
-  // 3. Use hardcoded default
   console.log(
-    `[Config] Batch size set to hardcoded default: ${defaultHardcodedBatchSize}`
+    `[API FetchData ALL][Config] Batch size set to default: ${defaultHardcodedBatchSize}`
   );
   return defaultHardcodedBatchSize;
 }
@@ -137,7 +58,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     : null;
 
   if (process.env.CRON_SECRET && authToken !== process.env.CRON_SECRET) {
-    console.warn("[Auth] Unauthorized access attempt to /api/fetch endpoint.");
+    console.warn("[API FetchData ALL][Auth] Unauthorized access attempt.");
     return NextResponse.json(
       { error: "Unauthorized", message: "Invalid or missing Bearer token." },
       { status: 401 }
@@ -147,15 +68,16 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   const { searchParams } = new URL(request.url);
   const startTime = Date.now();
+  const supabase = getSupabaseServerClient(); // Client for fetching all symbols
 
   // --- Batch Number Determination ---
   const batchParam = searchParams.get("batch");
-  let batchNumber = 1; // Default to batch 1
+  let batchNumber = 1;
   if (batchParam) {
     const parsedBatch = parseInt(batchParam, 10);
     if (isNaN(parsedBatch) || parsedBatch < 1) {
       return NextResponse.json(
-        { error: "Invalid batch number provided. Must be a positive integer." },
+        { error: "Invalid batch number. Must be a positive integer." },
         { status: 400 }
       );
     }
@@ -164,21 +86,23 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   // --- Batch Size Determination ---
   const BATCH_SIZE = determineBatchSize(searchParams);
-  // --- End Batch Size Determination ---
 
   console.log(
-    `GET /api/fetch called (authorized). Batch: ${batchNumber}, Size: ${BATCH_SIZE}`
+    `[API FetchData ALL] GET request authorized. Batch: ${batchNumber}, Size: ${BATCH_SIZE}`
   );
 
   let allSymbols: string[];
   try {
-    allSymbols = await fetchSymbols();
+    allSymbols = await fetchAllSymbols(supabase); // Use the service function
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : String(err);
-    console.error("[Critical] Error fetching symbols:", errorMessage);
+    console.error(
+      "[API FetchData ALL][Critical] Error fetching symbols:",
+      errorMessage
+    );
     return NextResponse.json(
       {
-        message: `Population attempt failed: Could not fetch symbols. Error: ${errorMessage}`,
+        message: `Data fetch attempt failed: Could not fetch symbols. Error: ${errorMessage}`,
         batch: batchNumber,
         batchSize: BATCH_SIZE,
         durationMs: Date.now() - startTime,
@@ -202,133 +126,53 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   if (symbolsForThisBatch.length > 0) {
     console.log(
-      `[Ingest] Batch ${batchNumber}: Processing ${symbolsForThisBatch.length} symbols (offset ${offset}, total available ${totalSymbolsAvailable}).`
+      `[API FetchData ALL] Batch ${batchNumber}: Processing ${symbolsForThisBatch.length} symbols (offset ${offset}, total ${totalSymbolsAvailable}).`
     );
-    const populationPromises = symbolsForThisBatch.map(
-      async (symbol): Promise<SymbolProcessingResult> => {
-        const symbolUpper = symbol.toUpperCase();
-        const results: SymbolResultDetails = {
-          profile: "Skipped",
-          income: "Skipped",
-          balance: "Skipped",
-          cashflow: "Skipped",
-          historicalprice: "Skipped",
-          gradesconsensus: "Skipped",
-        };
-        let overallStatus: "Success" | "Failed" = "Failed";
-        let overallError: string | undefined = undefined;
 
-        console.log(
-          `[ingest] Processing ${symbolUpper} for batch ${batchNumber}...`
-        );
-
-        try {
-          await getProfile(symbolUpper);
-          results.profile = "Success";
-          console.log(`[ingest] Profile fetch complete for ${symbolUpper}.`);
-        } catch (profileError: unknown) {
-          const errorMsg =
-            profileError instanceof Error
-              ? profileError.message
-              : String(profileError);
-          results.profile = `Failed: ${errorMsg}`;
-          overallError = `Profile fetch failed: ${errorMsg}. Statements skipped.`;
-          console.error(
-            `[Ingest] Profile fetch for ${symbolUpper} failed, skipping statements. Error:`,
-            profileError
-          );
-          return {
-            symbol: symbolUpper,
-            status: "Failed",
-            details: results,
-            error: overallError,
-          };
-        }
-
-        try {
-          console.log(`[Ingest] Fetching statements for ${symbolUpper}...`);
-          const statementPromises = [
-            getIncomeStatementsForSymbol(symbolUpper),
-            getBalanceSheetStatementsForSymbol(symbolUpper),
-            getCashFlowStatementsForSymbol(symbolUpper),
-            getHistoricalPricesForSymbol(symbolUpper),
-            getLatestGradesConsensus(symbolUpper),
-          ];
-          const settledResults = await Promise.allSettled(statementPromises);
-
-          results.income = processSettledResult(settledResults[0]);
-          results.balance = processSettledResult(settledResults[1]);
-          results.cashflow = processSettledResult(settledResults[2]);
-          results.historicalprice = processSettledResult(settledResults[3]);
-          results.gradesconsensus = processSettledResult(settledResults[4]);
-
-          const allStatementsSucceeded = settledResults.every(
-            (r) => r.status === "fulfilled"
-          );
-
-          if (allStatementsSucceeded) {
-            overallStatus = "Success";
-          } else {
-            overallStatus = "Failed";
-            const failedStatementMessages = settledResults
-              .map((r, index) => ({ result: r, name: STATEMENT_TYPES[index] }))
-              .filter((item) => item.result.status === "rejected")
-              .map(
-                (item) => `${item.name}: ${processSettledResult(item.result)}`
-              )
-              .join("; ");
-            overallError = `One or more statement fetches failed. Details: ${failedStatementMessages}`;
-          }
-          console.log(
-            `[Ingest] Finished statements for ${symbolUpper}. Status: ${overallStatus}`
-          );
-        } catch (processingError: unknown) {
-          const errorMsg =
-            processingError instanceof Error
-              ? processingError.message
-              : String(processingError);
-          overallStatus = "Failed";
-          overallError = `Unexpected error during statement processing for ${symbolUpper}: ${errorMsg}`;
-          console.error(
-            `[Ingest] Unexpected error for ${symbolUpper}:`,
-            processingError
-          );
-          STATEMENT_TYPES.forEach((type: StatementType) => {
-            if (results[type] === "Skipped")
-              results[
-                type
-              ] = `Failed (unexpected processing error: ${errorMsg})`;
-          });
-        }
-        return {
-          symbol: symbolUpper,
-          status: overallStatus,
-          details: results,
-          error: overallError,
-        };
-      }
+    // Process symbols in parallel for the current batch
+    const processingPromises = symbolsForThisBatch.map((symbol) =>
+      processSymbolData(
+        symbol /*, supabase - optional if underlying services handle their own client */
+      )
     );
-    symbolProcessingResults = await Promise.all(populationPromises);
+    // Using Promise.all to collect results, assuming individual processSymbolData handles its errors gracefully
+    // and returns a SymbolProcessingResult even on failure within its scope.
+    try {
+      symbolProcessingResults = await Promise.all(processingPromises);
+    } catch (batchProcessingError) {
+      // This catch is for errors if Promise.all itself fails, which shouldn't happen if processSymbolData always resolves.
+      // Individual errors are within SymbolProcessingResult.error
+      console.error(
+        `[API FetchData ALL] Unexpected error processing batch ${batchNumber}:`,
+        batchProcessingError
+      );
+      // Potentially add a global error to the response here if needed
+    }
   } else {
     console.log(
-      `[Ingest] Batch ${batchNumber}: No symbols to process for this batch range (offset ${offset}, total available ${totalSymbolsAvailable}).`
+      `[API FetchData ALL] Batch ${batchNumber}: No symbols to process for this batch range.`
     );
   }
 
-  let earningsCalendarStatus: string = "Skipped (processed only on batch 1)";
+  let earningsCalendarStatus: string =
+    "Skipped (not batch 1 or no symbols in batch 1)";
   if (batchNumber === 1) {
+    // Fetch earnings calendar only on the first batch run
     try {
-      console.log("[Ingest] Batch 1: Fetching earnings calendar...");
-      await getEarningsCalendar();
+      console.log(
+        "[API FetchData ALL] Batch 1: Attempting to fetch earnings calendar..."
+      );
+      await getEarningsCalendar(); // Assumes this function handles its own client and upsert
       earningsCalendarStatus = "Success";
-      console.log("[Ingest] Earnings calendar fetched successfully.");
+      console.log(
+        "[API FetchData ALL] Earnings calendar fetched successfully."
+      );
     } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       earningsCalendarStatus = `Failed: ${errorMsg}`;
       console.error(
-        "[Ingest] Error getting earnings calendar:",
-        errorMsg,
-        error
+        "[API FetchData ALL] Error fetching earnings calendar:",
+        errorMsg
       );
     }
   }
@@ -339,21 +183,25 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const successCount = symbolProcessingResults.filter(
     (r) => r.status === "Success"
   ).length;
-  const failedCount = symbolProcessingResults.length - successCount;
+  const profileFailedCount = symbolProcessingResults.filter(
+    (r) => r.status === "Profile_Fetch_Failed"
+  ).length;
+  const otherFailedCount = symbolProcessingResults.filter(
+    (r) => r.status === "Failed"
+  ).length;
 
   let batchMessage: string;
   if (symbolsForThisBatch.length > 0) {
-    batchMessage = `Batch ${batchNumber} (size ${BATCH_SIZE}) processed. Symbols attempted: ${symbolsForThisBatch.length}. Success: ${successCount}, Failed: ${failedCount}.`;
+    batchMessage = `Batch ${batchNumber} (size ${BATCH_SIZE}) processed. Symbols attempted: ${symbolsForThisBatch.length}. Success: ${successCount}, Profile Failures: ${profileFailedCount}, Other Failures: ${otherFailedCount}.`;
   } else {
-    if (batchNumber === 1 && totalSymbolsAvailable === 0) {
-      batchMessage = "No symbols found in the system to process at all.";
-    } else {
-      batchMessage = `Batch ${batchNumber} (size ${BATCH_SIZE}): No symbols in this batch range. Total symbols available: ${totalSymbolsAvailable}.`;
-    }
+    batchMessage =
+      batchNumber === 1 && totalSymbolsAvailable === 0
+        ? "No symbols found in the system to process."
+        : `Batch ${batchNumber} (size ${BATCH_SIZE}): No symbols in this batch range. Total available: ${totalSymbolsAvailable}.`;
   }
 
   console.log(
-    `Batch ${batchNumber} (size ${BATCH_SIZE}) processing finished in ${durationMs}ms. Symbols: ${successCount} success, ${failedCount} failed. Earnings Calendar: ${earningsCalendarStatus}`
+    `[API FetchData ALL] Batch ${batchNumber} finished in ${durationMs}ms. ${batchMessage} Earnings Calendar: ${earningsCalendarStatus}`
   );
 
   return NextResponse.json(
@@ -362,12 +210,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       batch: batchNumber,
       batchSize: BATCH_SIZE,
       symbolsAttemptedInBatch: symbolsForThisBatch.length,
-      symbolsProcessedInBatch: symbolProcessingResults.length,
-      totalSymbolsAvailable: totalSymbolsAvailable,
-      nextBatch: nextBatch,
-      durationMs: durationMs,
-      earningsCalendarStatus: earningsCalendarStatus,
-      details: symbolProcessingResults,
+      symbolsProcessedInBatch: symbolProcessingResults.length, // Count of results returned
+      totalSymbolsAvailable,
+      nextBatch,
+      durationMs,
+      earningsCalendarStatus,
+      details: symbolProcessingResults, // Array of SymbolProcessingResult
     },
     { status: 200 }
   );
