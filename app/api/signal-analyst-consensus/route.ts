@@ -1,236 +1,125 @@
 // app/api/signal-analyst-consensus/route.ts
-
 import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase/serverClient";
-import type { Database } from "@/lib/supabase/database.types";
+import {
+  processAnalystConsensusForSymbol,
+  type AnalystProcessingResult,
+} from "@/lib/services/signal-analyst-consensus/service";
 
-// --- Types ---
-type GradesConsensusRow =
-  Database["public"]["Tables"]["grades_consensus"]["Row"];
-// Define SignalInsert based on the final table structure with both columns
-type SignalInsert = Omit<
-  Database["public"]["Tables"]["signals"]["Insert"],
-  "signal_category" | "signal_type"
-> & {
-  signal_category: "sentiment"; // *** CHANGED: Classify analyst signals as 'sentiment' ***
-  signal_type: "event" | "state";
-};
-
-// --- Configuration ---
-// TODO: Update symbol list
-const ALL_SYMBOLS_TO_PROCESS: string[] = [
-  "MSFT",
-  "AAPL",
-  "NVDA",
-  "AMZN",
-  "GOOGL",
-  "META",
-  "BRK-B",
-  "AVGO",
-  "TSLA",
-  "LLY",
-  "WMT",
-  "JPM",
-  "V",
-  "MA",
-  "NFLX",
-  "XOM",
-  "COST",
-  "ORCL",
-  "PG",
-  "JNJ",
-  "UNH",
-  "HD",
-  "ABBV",
-  "KO",
-  "BAC",
-  "TSM",
-  "TMUS",
-  "PM",
-  "CRM",
-  "CVX",
-  "WFC",
-  "CSCO",
-  "MCD",
-  "ABT",
-  "IBM",
-  "GE",
-  "MRK",
-  "T",
-  "NOW",
-  "AXP",
-  "PEP",
-  "VZ",
-  "MS",
-  "ISRG",
-  "GS",
-  "INTU",
-  "UBER",
-  "RTX",
-  "BKNG",
-  "PGR",
-];
-// ---
-
-// --- Helper: Map consensus string to rank ---
-const consensusRankMap: { [key: string]: number } = {
-  "Strong Buy": 5,
-  Buy: 4,
-  Hold: 3,
-  Sell: 2,
-  "Strong Sell": 1,
-};
-function getConsensusRank(consensus: string | null | undefined): number | null {
-  if (!consensus) return null;
-  return consensusRankMap[consensus] ?? null;
-}
-
-// --- Main Route Handler ---
 export async function GET(): Promise<NextResponse> {
   console.log(
-    `[Analyst Signal Top2] Starting consensus signal generation for ${ALL_SYMBOLS_TO_PROCESS.length} symbols.`
+    "[API AnalystConsensus ALL] Received request to process all symbols."
   );
+  const supabase = getSupabaseServerClient(); // Single client for this operation
 
-  const supabase = getSupabaseServerClient();
-  const signalsToInsert: SignalInsert[] = [];
-  const errorsProcessing: { symbol: string; error: string }[] = [];
+  // 1. Fetch symbols from the profile_symbols view
+  let symbolsToProcess: string[] = [];
+  try {
+    const { data: symbolsData, error: symbolsError } = await supabase
+      .from("profile_symbols") // Make sure this view name is correct
+      .select("symbol");
 
-  // Process symbols
-  for (const symbol of ALL_SYMBOLS_TO_PROCESS) {
-    try {
-      // 1. Fetch Top 2 most recent consensus records
-      const { data: consensusHistory, error: dbError } = await supabase
-        .from("grades_consensus")
-        .select("*")
-        .eq("symbol", symbol)
-        .order("date", { ascending: false })
-        .limit(2);
-
-      if (dbError) {
-        throw new Error(
-          `Supabase fetch error for ${symbol}: ${dbError.message}`
-        );
-      }
-
-      // Need at least one record for the state signal
-      if (!consensusHistory || consensusHistory.length < 1) {
-        console.log(
-          `[Analyst Signal Top2] Skipping ${symbol}: No consensus records found.`
-        );
-        continue;
-      }
-
-      const currentData = consensusHistory[0] as GradesConsensusRow;
-      const previousData =
-        consensusHistory.length >= 2
-          ? (consensusHistory[1] as GradesConsensusRow)
-          : null;
-
-      // --- Generate Signals ---
-      const signalDate = currentData.date;
-
-      // Signal 1: Current Consensus State (Rank)
-      const currentRank = getConsensusRank(currentData.consensus);
-      if (currentRank !== null) {
-        signalsToInsert.push({
-          signal_date: signalDate,
-          symbol: symbol,
-          signal_category: "sentiment", // *** CHANGED ***
-          signal_type: "state",
-          signal_code: `ANALYST_CONSENSUS_RANK_${currentRank}`,
-          details: {
-            consensus: currentData.consensus,
-            rank: currentRank,
-            strong_buy: currentData.strong_buy,
-            buy: currentData.buy,
-            hold: currentData.hold,
-            sell: currentData.sell,
-            strong_sell: currentData.strong_sell,
-          },
-        });
-      }
-
-      // Signal 2: Change Event (Upgrade/Downgrade) - Only if previous data exists
-      if (
-        previousData &&
-        currentData.consensus &&
-        previousData.consensus &&
-        currentData.consensus !== previousData.consensus
-      ) {
-        const previousRank = getConsensusRank(previousData.consensus);
-
-        if (
-          currentRank !== null &&
-          previousRank !== null &&
-          currentRank !== previousRank
-        ) {
-          const signalCode =
-            currentRank > previousRank
-              ? "ANALYST_CONSENSUS_UPGRADE"
-              : "ANALYST_CONSENSUS_DOWNGRADE";
-
-          signalsToInsert.push({
-            signal_date: signalDate,
-            symbol: symbol,
-            signal_category: "sentiment", // *** CHANGED ***
-            signal_type: "event",
-            signal_code: signalCode,
-            details: {
-              previous_consensus: previousData.consensus,
-              current_consensus: currentData.consensus,
-              previous_rank: previousRank,
-              current_rank: currentRank,
-              previous_date: previousData.date,
-            },
-          });
-          console.log(
-            `[Analyst Signal Top2] Staged ${signalCode} for ${symbol} (${previousData.consensus} -> ${currentData.consensus})`
-          );
-        }
-      }
-    } catch (error: unknown) {
-      let errorMessage = "Unknown processing error";
-      if (error instanceof Error) errorMessage = error.message;
+    if (symbolsError) {
       console.error(
-        `[Analyst Signal Top2] Error processing symbol ${symbol}:`,
-        error
+        "[API AnalystConsensus ALL] Error fetching symbols from profile_symbols:",
+        symbolsError.message
       );
-      errorsProcessing.push({ symbol, error: errorMessage });
+      return NextResponse.json(
+        {
+          message: "Error fetching symbol list from profile_symbols.",
+          error: symbolsError.message,
+        },
+        { status: 500 }
+      );
     }
-  } // End symbol loop
 
-  // Bulk Insert Signals
-  if (signalsToInsert.length > 0) {
-    console.log(
-      `[Analyst Signal Top2] Inserting ${signalsToInsert.length} signals...`
-    );
-    // Use explicit type assertion for upsert data
-    const typedSignalsToInsert =
-      signalsToInsert as Database["public"]["Tables"]["signals"]["Insert"][];
-    const { error: signalInsertError } = await supabase
-      .from("signals")
-      .upsert(typedSignalsToInsert, {
-        onConflict: "symbol, signal_date, signal_code",
-      });
-
-    if (signalInsertError) {
-      console.error(
-        "[Analyst Signal Top2] Error inserting signals:",
-        signalInsertError
+    if (!symbolsData || symbolsData.length === 0) {
+      console.log(
+        "[API AnalystConsensus ALL] No symbols found in profile_symbols view."
       );
-      errorsProcessing.push({
-        symbol: "BULK_SIGNAL_INSERT",
-        error: signalInsertError.message,
-      });
+      return NextResponse.json(
+        { message: "No symbols found in profile_symbols view to process." },
+        { status: 200 }
+      );
+    }
+
+    symbolsToProcess = symbolsData
+      .map((s: { symbol: string | null }) => s.symbol)
+      .filter((s): s is string => typeof s === "string" && s.trim() !== "");
+
+    if (symbolsToProcess.length === 0) {
+      console.log(
+        "[API AnalystConsensus ALL] No valid symbols to process after filtering."
+      );
+      return NextResponse.json(
+        { message: "No valid symbols found to process." },
+        { status: 200 }
+      );
+    }
+    console.log(
+      `[API AnalystConsensus ALL] Found ${symbolsToProcess.length} symbols to process.`
+    );
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : String(e);
+    console.error(
+      "[API AnalystConsensus ALL] Unexpected error fetching symbols:",
+      errorMessage
+    );
+    return NextResponse.json(
+      {
+        message: "An unexpected error occurred while fetching symbols.",
+        error: errorMessage,
+      },
+      { status: 500 }
+    );
+  }
+
+  // 2. Process each symbol
+  const allResults: AnalystProcessingResult[] = [];
+  for (const symbol of symbolsToProcess) {
+    const result = await processAnalystConsensusForSymbol(symbol, supabase); // Pass the client
+    allResults.push(result);
+  }
+
+  // 3. Aggregate results and respond
+  let totalSignalsGenerated: number = 0;
+  let successfullyProcessedCount: number = 0;
+  let skippedFreshCount: number = 0;
+  let noDataForGenerationCount: number = 0;
+  let errorCount: number = 0;
+
+  for (const res of allResults) {
+    totalSignalsGenerated += res.signalsGenerated;
+    switch (res.status) {
+      case "processed":
+        successfullyProcessedCount++;
+        break;
+      case "skipped_fresh":
+        skippedFreshCount++;
+        break;
+      case "no_data_for_generation":
+        noDataForGenerationCount++;
+        break;
+      case "error":
+        errorCount++;
+        break;
     }
   }
 
-  // --- Return Response ---
+  const responseSummary = {
+    message: `Analyst consensus processing complete for all ${symbolsToProcess.length} attempted symbols.`,
+    totalSymbolsAttempted: symbolsToProcess.length,
+    successfullyProcessedCount,
+    skippedFreshCount,
+    noDataForGenerationCount,
+    errorCount,
+    totalSignalsGenerated,
+    results: allResults, // Includes details for each symbol
+  };
+
   console.log(
-    `[Analyst Signal Top2] Finished Run. Signals Generated: ${signalsToInsert.length}. Errors: ${errorsProcessing.length}`
+    `[API AnalystConsensus ALL] Processing finished. Generated ${totalSignalsGenerated} signals. Errors: ${errorCount}.`
   );
-  return NextResponse.json({
-    message: `Processed symbols: ${ALL_SYMBOLS_TO_PROCESS.length}. Signals generated: ${signalsToInsert.length}. Errors: ${errorsProcessing.length}`,
-    errors: errorsProcessing,
-  });
+
+  return NextResponse.json(responseSummary, { status: 200 });
 }
