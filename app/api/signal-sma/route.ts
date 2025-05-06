@@ -1,81 +1,125 @@
 // app/api/signal-sma/route.ts
-import { type NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase/serverClient";
-import type { Database } from "@/lib/supabase/database.types";
-import { generateAllSmaSignals } from "@/lib/services/signal-sma/fetch";
+import {
+  processSmaSignalsForSymbol,
+  type SmaProcessingResult,
+} from "@/lib/services/signal-sma/service";
 
-export async function GET(request: NextRequest): Promise<NextResponse> {
-  const { searchParams } = new URL(request.url);
-  const dateParam: string | null = searchParams.get("date");
-
-  // Validate date format if provided
-  if (dateParam && !/^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
-    return NextResponse.json(
-      { error: "Invalid date format. Please use YYYY-MM-DD." },
-      { status: 400 }
-    );
-  }
-
+export async function GET(): Promise<NextResponse> {
   console.log(
-    `[SMA ALL] GET: Request received ${
-      dateParam ? `for date ${dateParam}` : "for latest available data"
-    }.`
+    "[API SmaSignal ALL] Received request to process all symbols for SMA signals."
   );
+  const supabase = getSupabaseServerClient();
 
-  // Call the service function
-  // generateAllSMASignals already returns errorsProcessing with the correct structure
-  const { allGeneratedSignals, errorsProcessing } = await generateAllSmaSignals(
-    dateParam ?? undefined
-  );
+  // 1. Fetch symbols from the profile_symbols view
+  let symbolsToProcess: string[] = [];
+  try {
+    const { data: symbolsData, error: symbolsError } = await supabase
+      .from("profile_symbols")
+      .select("symbol");
 
-  // Upsert signals if any were generated
-  if (allGeneratedSignals.length > 0) {
-    console.log(
-      `[SMA ALL] GET: Attempting to upsert ${allGeneratedSignals.length} signals...`
-    );
-    const supabase = getSupabaseServerClient(); // Get client for upsert
-    const typedSignalsToInsert =
-      allGeneratedSignals as Database["public"]["Tables"]["signals"]["Insert"][];
-
-    const { error: upsertError } = await supabase
-      .from("signals")
-      .upsert(typedSignalsToInsert, {
-        onConflict: "symbol, signal_date, signal_code",
-      });
-
-    if (upsertError) {
+    if (symbolsError) {
       console.error(
-        "[SMA ALL] GET: Error upserting signals:",
-        upsertError.message
+        "[API SmaSignal ALL] Error fetching symbols from profile_symbols:",
+        symbolsError.message
       );
       return NextResponse.json(
         {
-          message: `Signal generation run complete. FAILED to upsert some/all signals.`,
-          signalsGeneratedCount: allGeneratedSignals.length,
-          processingErrorCount: errorsProcessing.length,
-          processingErrors: errorsProcessing, // This now matches ProcessingError[]
-          insertError: upsertError.message,
+          message: "Error fetching symbol list from profile_symbols.",
+          error: symbolsError.message,
         },
         { status: 500 }
       );
     }
+
+    if (!symbolsData || symbolsData.length === 0) {
+      console.log(
+        "[API SmaSignal ALL] No symbols found in profile_symbols view."
+      );
+      return NextResponse.json(
+        { message: "No symbols found in profile_symbols view to process." },
+        { status: 200 }
+      );
+    }
+
+    symbolsToProcess = symbolsData
+      .map((s: { symbol: string | null }) => s.symbol)
+      .filter((s): s is string => typeof s === "string" && s.trim() !== "");
+
+    if (symbolsToProcess.length === 0) {
+      console.log(
+        "[API SmaSignal ALL] No valid symbols to process after filtering."
+      );
+      return NextResponse.json(
+        { message: "No valid symbols found to process." },
+        { status: 200 }
+      );
+    }
     console.log(
-      `[SMA ALL] GET: Successfully upserted ${allGeneratedSignals.length} signals.`
+      `[API SmaSignal ALL] Found ${symbolsToProcess.length} symbols to process.`
     );
-  } else {
-    console.log("[SMA ALL] GET: No signals generated to upsert.");
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : String(e);
+    console.error(
+      "[API SmaSignal ALL] Unexpected error fetching symbols:",
+      errorMessage
+    );
+    return NextResponse.json(
+      {
+        message: "An unexpected error occurred while fetching symbols.",
+        error: errorMessage,
+      },
+      { status: 500 }
+    );
   }
 
-  // Return the response
+  // 2. Process each symbol
+  const allResults: SmaProcessingResult[] = [];
+  for (const symbol of symbolsToProcess) {
+    const result = await processSmaSignalsForSymbol(symbol, supabase);
+    allResults.push(result);
+  }
+
+  // 3. Aggregate results and respond
+  let totalSignalsGenerated: number = 0;
+  let successfullyProcessedCount: number = 0;
+  let skippedFreshCount: number = 0;
+  let noDataForGenerationCount: number = 0;
+  let errorCount: number = 0;
+
+  for (const res of allResults) {
+    totalSignalsGenerated += res.signalsGenerated;
+    switch (res.status) {
+      case "processed":
+        successfullyProcessedCount++;
+        break;
+      case "skipped_fresh":
+        skippedFreshCount++;
+        break;
+      case "no_data_for_generation":
+        noDataForGenerationCount++;
+        break;
+      case "error":
+        errorCount++;
+        break;
+    }
+  }
+
+  const responseSummary = {
+    message: `SMA signals processing complete for all ${symbolsToProcess.length} attempted symbols.`,
+    totalSymbolsAttempted: symbolsToProcess.length,
+    successfullyProcessedCount,
+    skippedFreshCount,
+    noDataForGenerationCount,
+    errorCount,
+    totalSignalsGenerated,
+    results: allResults,
+  };
+
   console.log(
-    `[SMA ALL] GET: Processing finished. Signals Generated: ${allGeneratedSignals.length}. Errors during processing: ${errorsProcessing.length}.`
+    `[API SmaSignal ALL] Processing finished. Generated ${totalSignalsGenerated} signals. Errors: ${errorCount}.`
   );
-  return NextResponse.json({
-    message: `Signal processing run complete ${
-      dateParam ? `for date ${dateParam}` : "for latest available dates"
-    }.`,
-    signalsGeneratedCount: allGeneratedSignals.length,
-    processingErrorCount: errorsProcessing.length,
-    errors: errorsProcessing, // This now matches ProcessingError[]
-  });
+
+  return NextResponse.json(responseSummary, { status: 200 });
 }
