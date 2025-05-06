@@ -1,5 +1,5 @@
 // app/balance-sheet-statements/page.tsx
-import { getAllBalanceSheetStatements } from "@/api/balance-sheet-statements/service";
+import { getAllBalanceSheetStatements } from "@/lib/services/balance-sheet-statements";
 import { SmartTable } from "@/components/SmartTable";
 
 export const revalidate = 60;

@@ -5,11 +5,8 @@
  * ---------------------------------------------------------------------*/
 import { NextResponse } from "next/server";
 
-// 1. Import the specific service method for getting the list view
-import { getStockScreenerResults } from "./service";
-
-// 2. Import the API response type
-import type { StockScreenerItem } from "./service";
+import { getStockScreenerResults } from "@/lib/services/stocker-screener";
+import type { StockScreenerItem } from "@/lib/services/stocker-screener";
 
 /**
  * Handles GET requests to fetch the latest stock screener results.
