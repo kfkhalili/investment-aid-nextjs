@@ -1,231 +1,350 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react"; // Import useRef
-import type { GenerateMarketSignalsOutput } from "@/ai/flows/generate-market-signals"; // Updated import type
-import { generateMarketSignals } from "@/ai/flows/generate-market-signals"; // Updated import
+import { useState, useEffect, useRef, useCallback } from "react"; // Added useCallback
 import SignalCard from "@/components/SignalCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button"; // Import Button
+import { Button } from "@/components/ui/button";
 import { Terminal } from "lucide-react";
-import { cn } from "@/lib/utils"; // Import cn utility
+import { cn } from "@/lib/utils";
 import { StyledSignUpButton } from "./components/StyledClerk";
-import { SignedOut } from "@clerk/nextjs";
+import { SignedOut, useAuth } from "@clerk/nextjs";
 
-// Placeholder user preferences - In a real app, these would come from auth/user profile
-const placeholderUserPreferences = {
-  industries: ["Technology", "Healthcare", "Finance", "Energy"], // Added Energy
-  sectors: [
-    "Software",
-    "Biotechnology",
-    "Cloud Computing",
-    "AI",
-    "Semiconductors",
-    "Banking",
-  ], // Added Semiconductors, Banking
-  portfolio: [
-    { symbol: "AAPL", name: "Apple Inc." },
-    { symbol: "GOOGL", name: "Alphabet Inc." },
-    { symbol: "MSFT", name: "Microsoft Corporation" },
-    { symbol: "NVDA", name: "NVIDIA Corporation" }, // Added NVDA
-    { symbol: "JPM", name: "JPMorgan Chase & Co." }, // Added JPM
-    { symbol: "TSLA", name: "Tesla, Inc." },
-    { symbol: "AMZN", name: "Amazon.com, Inc." },
-    { symbol: "META", name: "Meta Platforms, Inc." },
-    { symbol: "V", name: "Visa Inc." },
-    { symbol: "UNH", name: "UnitedHealth Group Incorporated" },
-    { symbol: "BTC-USD", name: "Bitcoin" }, // Added Bitcoin
-    { symbol: "ETH-USD", name: "Ethereum" }, // Added Ethereum
-  ],
-};
-
-// Define MarketSignal type locally matching the output schema element
 interface MarketSignal {
   title: string;
   description: string;
   timestamp: number;
+  symbol?: string;
+  signalCode?: string;
 }
+
+const TOP_SYMBOLS_TO_PROCESS: string[] = [
+  "AAPL",
+  "MSFT",
+  "GOOGL",
+  "AMZN",
+  "NVDA",
+  "TSLA",
+  "META",
+  "JPM",
+  "V",
+  "JNJ",
+  // "XOM", "WMT", "UNH", "LLY", "AVGO", "PG", "HD", "MA", "CVX", "MRK",
+  // "PEP", "COST", "KO", "ADBE", "BAC", "CSCO", "CRM", "MCD", "PFE", "ABBV",
+];
 
 export default function Home() {
   const [signals, setSignals] = useState<MarketSignal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadingMessage, setLoadingMessage] =
+    useState<string>("Initializing...");
   const [activeFilter, setActiveFilter] = useState<
     "all" | "popular" | "trending"
-  >("all"); // State for active filter
-  const filterSectionRef = useRef<HTMLDivElement>(null); // Ref for the filter section
+  >("all");
+  const filterSectionRef = useRef<HTMLDivElement>(null);
+  const { isSignedIn } = useAuth();
+
+  // useCallback to memoize fetchAndProcessAllSymbols to prevent re-creation on every render
+  // unless its own dependencies change (which are none in this case, as TOP_SYMBOLS_TO_PROCESS is constant).
+  const fetchAndProcessAllSymbols = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    setSignals([]);
+
+    let overallErrorMessage: string | null = null;
+    let ingestedSymbolsCount = 0;
+
+    try {
+      // Phase 1: Ingest data
+      setLoadingMessage(
+        `Ingesting data for ${TOP_SYMBOLS_TO_PROCESS.length} symbols...`
+      );
+      const ingestPromises = TOP_SYMBOLS_TO_PROCESS.map(async (symbol) => {
+        try {
+          const response = await fetch(`/api/ingest/${symbol}`);
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({})); // Graceful JSON parsing
+            console.warn(
+              `Ingestion failed for ${symbol}: ${
+                errorData.error || response.statusText || response.status
+              }`
+            );
+            return {
+              symbol,
+              status: "ingest_failed",
+              error: errorData.error || `HTTP ${response.status}`,
+            };
+          }
+          ingestedSymbolsCount++;
+          return { symbol, status: "ingest_success" };
+        } catch (ingestErr: unknown) {
+          const errorMessage =
+            ingestErr instanceof Error
+              ? ingestErr.message
+              : "Unknown ingest error";
+          console.warn(`Ingestion error for ${symbol}: ${errorMessage}`);
+          return { symbol, status: "ingest_error", error: errorMessage };
+        }
+      });
+
+      const ingestResults = await Promise.allSettled(ingestPromises);
+      const ingestFailures = ingestResults.filter(
+        (r) =>
+          r.status === "rejected" ||
+          (r.status === "fulfilled" && r.value.status !== "ingest_success")
+      ).length;
+
+      ingestResults.forEach((result) => {
+        if (
+          result.status === "fulfilled" &&
+          result.value.status !== "ingest_success"
+        ) {
+          console.log(
+            `Ingestion issue for ${result.value.symbol}: ${
+              result.value.error || result.value.status
+            }`
+          );
+        } else if (result.status === "rejected") {
+          console.error(
+            `Critical ingestion promise rejection: `,
+            result.reason
+          );
+        }
+      });
+      console.log(
+        `Ingestion attempts completed. Success: ${ingestedSymbolsCount}, Failures/Issues: ${ingestFailures}`
+      );
+      if (
+        ingestFailures > 0 &&
+        ingestFailures === TOP_SYMBOLS_TO_PROCESS.length
+      ) {
+        overallErrorMessage =
+          "Data ingestion failed for all symbols. Signals may be outdated or unavailable.";
+      } else if (ingestFailures > 0) {
+        overallErrorMessage =
+          "Some data ingestion tasks failed. Displayed signals might be based on partially updated data.";
+      }
+
+      // Phase 2: Fetch signals
+      setLoadingMessage(
+        `Fetching signals for ${TOP_SYMBOLS_TO_PROCESS.length} symbols...`
+      );
+      let allFetchedSignals: MarketSignal[] = [];
+      const signalFetchPromises = TOP_SYMBOLS_TO_PROCESS.map(async (symbol) => {
+        try {
+          const response = await fetch(`/api/signals/${symbol}`);
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            console.warn(
+              `Signal fetch failed for ${symbol}: ${
+                errorData.error || response.statusText || response.status
+              }`
+            );
+            return [];
+          }
+          const fetchedSignalsForSymbol: MarketSignal[] = await response.json();
+          return fetchedSignalsForSymbol;
+        } catch (signalErr: unknown) {
+          const errorMessage =
+            signalErr instanceof Error
+              ? signalErr.message
+              : "Unknown signal fetch error";
+          console.warn(`Signal fetch error for ${symbol}: ${errorMessage}`);
+          return [];
+        }
+      });
+
+      const signalResults = await Promise.allSettled(signalFetchPromises);
+      let signalFetchRejections = 0;
+      signalResults.forEach((result) => {
+        if (result.status === "fulfilled" && Array.isArray(result.value)) {
+          allFetchedSignals = allFetchedSignals.concat(result.value);
+        } else if (result.status === "rejected") {
+          console.error(
+            `Critical signal fetch promise rejection: `,
+            result.reason
+          );
+          signalFetchRejections++;
+        }
+      });
+
+      allFetchedSignals.sort((a, b) => b.timestamp - a.timestamp);
+      console.log(
+        `Signal fetching completed. Total signals retrieved: ${allFetchedSignals.length}. Rejections: ${signalFetchRejections}`
+      );
+      setSignals(allFetchedSignals);
+
+      if (signalFetchRejections > 0 && !overallErrorMessage) {
+        overallErrorMessage =
+          "Some signals could not be fetched. The displayed list may be incomplete.";
+      }
+
+      if (allFetchedSignals.length === 0 && !overallErrorMessage) {
+        if (ingestFailures === TOP_SYMBOLS_TO_PROCESS.length) {
+          overallErrorMessage =
+            "No signals available due to data ingestion failures.";
+        } else {
+          // This message will be shown by the UI component itself if filteredSignals is empty
+          // overallErrorMessage = "No market signals found after processing.";
+        }
+      }
+
+      if (overallErrorMessage) {
+        setError(overallErrorMessage);
+      }
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : "An unknown error occurred during setup";
+      console.error("Overall error in fetchAndProcessAllSymbols:", err);
+      setError(`Failed to process market signals. ${errorMessage}`);
+      setSignals([
+        {
+          title: "Fallback: System Error",
+          description:
+            "An error occurred while preparing market signals. Please try again later.",
+          timestamp: Date.now(),
+          symbol: "SYSTEM",
+          signalCode: "PROCESS_ERROR",
+        },
+      ]);
+    } finally {
+      setIsLoading(false);
+      setLoadingMessage("");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty dependency array: fetch data once on mount.
+  // activeFilter will apply client-side. If API filtering is added, activeFilter should be a dependency.
 
   useEffect(() => {
-    const fetchSignals = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        // Use placeholder preferences for now
-        console.log(
-          `Requesting signal generation for '${activeFilter}' with preferences:`,
-          placeholderUserPreferences
-        );
-        // TODO: In a real app, use the activeFilter to fetch appropriate signals
-        const generatedSignals: GenerateMarketSignalsOutput =
-          await generateMarketSignals(placeholderUserPreferences); // Use new function
-        console.log(
-          `Received ${generatedSignals?.length ?? 0} generated signals:`,
-          generatedSignals
-        );
-        // Ensure generatedSignals is always an array before setting state
-        setSignals(Array.isArray(generatedSignals) ? generatedSignals : []);
-      } catch (err) {
-        console.error("Error generating signals:", err);
-        setError("Failed to generate market signals. Please try again later.");
-        // Provide some static fallback signals on error
-        setSignals([
-          {
-            title: "Fallback: Market Volatility High",
-            description: "Increased market volatility observed.",
-            timestamp: Date.now(),
-          },
-          {
-            title: "Fallback: Check Tech Stocks",
-            description: "Monitor technology sector performance closely.",
-            timestamp: Date.now() - 3600000,
-          },
-          {
-            title: "Fallback: Interest Rates Steady",
-            description: "Central bank indicates steady interest rates.",
-            timestamp: Date.now() - 7200000,
-          },
-          {
-            title: "Fallback: Oil Prices Fluctuate",
-            description: "Geopolitical tensions cause oil price swings.",
-            timestamp: Date.now() - 10800000,
-          },
-        ]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    fetchAndProcessAllSymbols();
+  }, [fetchAndProcessAllSymbols]); // Run fetchAndProcessAllSymbols when it (or its dependencies) change. Since it's memoized and has no deps, this runs once.
 
-    fetchSignals();
-  }, [activeFilter]); // Refetch signals when activeFilter changes
-
-  // Function to handle filter change and scroll
   const handleFilterChange = (newFilter: "all" | "popular" | "trending") => {
-    // Scroll the filter section into view
     if (filterSectionRef.current) {
-      // Use block: 'start' to align the top of the element with the top of the scroll container (or just below sticky header)
       filterSectionRef.current.scrollIntoView({
         behavior: "smooth",
         block: "start",
       });
     }
-    // Update the active filter state *after* initiating the scroll
     setActiveFilter(newFilter);
   };
 
+  const filteredSignals = signals.filter(() => {
+    if (activeFilter === "all") return true;
+    if (activeFilter === "popular") {
+      // Placeholder: Implement actual popularity logic
+      // e.g., return ["AAPL", "TSLA", "NVDA"].includes(signal.symbol || "") || signal.signalCode?.includes("CROSS_ABOVE");
+      return true;
+    }
+    if (activeFilter === "trending") {
+      // Placeholder: Implement actual trending logic
+      // e.g., const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000; return signal.timestamp > oneDayAgo;
+      return true;
+    }
+    return true;
+  });
+
   return (
     <div>
-      <SignedOut>
+      {!isSignedIn && (
+        <SignedOut>
+          <div className="container mx-auto px-4">
+            <div className="flex flex-col items-center justify-center text-center min-h-[40vh] mb-12">
+              <h1 className="text-5xl sm:text-6xl uppercase mb-0 font-bold font-['FaktCondensed',_AvenirNextCondensed-Medium,_'Segoe_UI',_sans-serif]">
+                Spot the Trends
+              </h1>
+              <h2 className="text-5xl sm:text-6xl uppercase underline decoration-primary decoration-[12px] underline-offset-8 mb-6 font-bold font-['FaktCondensed',_AvenirNextCondensed-Medium,_'Segoe_UI',_sans-serif] -mt-2">
+                See the Moves
+              </h2>
+              <p className="text-lg sm:text-xl text-foreground/80 max-w-2xl mb-8">
+                Market Signals, Simplified
+              </p>
+              <StyledSignUpButton>
+                <Button size="lg">Sign up</Button>
+              </StyledSignUpButton>
+            </div>
+          </div>
+        </SignedOut>
+      )}
+
+      {error && !isLoading && (
         <div className="container mx-auto px-4">
-          <div className="flex flex-col items-center justify-center text-center min-h-[40vh] mb-12">
-            <h1 className="text-5xl sm:text-6xl uppercase mb-0 font-bold font-['FaktCondensed',_AvenirNextCondensed-Medium,_'Segoe_UI',_sans-serif]">
-              Spot the Trends
-            </h1>
-            <h2 className="text-5xl sm:text-6xl uppercase underline decoration-primary decoration-[12px] underline-offset-8 mb-6 font-bold font-['FaktCondensed',_AvenirNextCondensed-Medium,_'Segoe_UI',_sans-serif] -mt-2">
-              See the Moves
-            </h2>
-            <p className="text-lg sm:text-xl text-foreground/80 max-w-2xl mb-8">
-              Market Signals, Simplified
-            </p>
-            <StyledSignUpButton>
-              <Button size="lg">Sign up</Button>
-            </StyledSignUpButton>
+          <Alert variant="destructive" className="mb-6">
+            <Terminal className="h-4 w-4" />
+            <AlertTitle>Signal Processing Issue</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        </div>
+      )}
+
+      <div
+        ref={filterSectionRef}
+        id="filter-section"
+        className="sticky top-[56px] sm:top-[theme(spacing.14)] z-20 bg-background border-b mb-6"
+      >
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex justify-center sm:justify-start gap-2 sm:gap-4">
+            {(["all", "popular", "trending"] as const).map((filter) => (
+              <Button
+                key={filter}
+                variant="ghost"
+                onClick={() => handleFilterChange(filter)}
+                className={cn(
+                  "uppercase tracking-wider font-semibold hover:bg-transparent hover:text-primary focus-visible:ring-0 focus-visible:ring-offset-0 px-2 sm:px-4 py-1 sm:py-2 text-sm sm:text-base",
+                  {
+                    "text-primary": activeFilter === filter,
+                    "text-muted-foreground": activeFilter !== filter,
+                  }
+                )}
+              >
+                {filter}
+              </Button>
+            ))}
           </div>
         </div>
-        {/* Error Alert (inside container) */}
-        {error && (
-          <div className="container mx-auto px-4">
-            <Alert variant="destructive" className="mb-6">
-              <Terminal className="h-4 w-4" />
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
+      </div>
+
+      <div className="container mx-auto px-4 pb-8">
+        {isLoading && (
+          <div className="text-center py-4 text-muted-foreground">
+            {loadingMessage}
           </div>
         )}
-        {/* Filter Buttons Section - Made sticky */}
-        {/* Use theme(spacing.14) which corresponds to h-14 of the header */}
-        <div
-          ref={filterSectionRef}
-          id="filter-section"
-          className="sticky top-[theme(spacing.14)] z-20 bg-background border-b mb-6"
-        >
-          <div className="container mx-auto px-4 py-4">
-            <div className="flex justify-center sm:justify-start gap-4">
-              <Button
-                variant="ghost" // Use ghost for minimal styling
-                onClick={() => handleFilterChange("all")} // Use handler
-                className={cn(
-                  "uppercase tracking-wider font-semibold hover:bg-transparent hover:text-primary focus-visible:ring-0 focus-visible:ring-offset-0", // Only change text color on hover, remove focus ring
-                  {
-                    "text-primary": activeFilter === "all", // Style for active button
-                    "text-muted-foreground": activeFilter !== "all", // Dimmer color for inactive
-                  }
-                )}
-              >
-                All
-              </Button>
-              <Button
-                variant="ghost" // Use ghost for minimal styling
-                onClick={() => handleFilterChange("popular")} // Use handler
-                className={cn(
-                  "uppercase tracking-wider font-semibold hover:bg-transparent hover:text-primary focus-visible:ring-0 focus-visible:ring-offset-0", // Only change text color on hover, remove focus ring
-                  {
-                    "text-primary": activeFilter === "popular", // Style for active button
-                    "text-muted-foreground": activeFilter !== "popular", // Dimmer color for inactive
-                  }
-                )}
-              >
-                Popular
-              </Button>
-              <Button
-                variant="ghost" // Use ghost for minimal styling
-                onClick={() => handleFilterChange("trending")} // Use handler
-                className={cn(
-                  "uppercase tracking-wider font-semibold hover:bg-transparent hover:text-primary focus-visible:ring-0 focus-visible:ring-offset-0", // Only change text color on hover, remove focus ring
-                  {
-                    "text-primary": activeFilter === "trending", // Style for active button
-                    "text-muted-foreground": activeFilter !== "trending", // Dimmer color for inactive
-                  }
-                )}
-              >
-                Trending
-              </Button>
-            </div>
-          </div>
-        </div>
-      </SignedOut>
-      {/* Signal Cards Grid (inside container) */}
-      <div className="container mx-auto px-4 pb-8">
-        {" "}
-        {/* Added container/padding here, added bottom padding */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {isLoading
-            ? Array.from({ length: 9 }).map(
-                (
-                  _,
-                  index // Reduced skeleton count to 9
-                ) => (
-                  <Skeleton key={index} className="h-72 w-full rounded-lg" /> // Updated height to h-72
-                )
-              )
-            : signals.map((signal, index) => (
-                <SignalCard key={index} signal={signal} />
+            ? Array.from({
+                length:
+                  TOP_SYMBOLS_TO_PROCESS.length > 6
+                    ? 6
+                    : TOP_SYMBOLS_TO_PROCESS.length || 3,
+              }).map((_, index) => (
+                <Skeleton key={index} className="h-72 w-full rounded-lg" />
+              ))
+            : filteredSignals.map((signal, index) => (
+                <SignalCard
+                  key={`${signal.timestamp}-${signal.symbol || "unknown"}-${
+                    signal.signalCode || index
+                  }`}
+                  signal={signal}
+                />
               ))}
-          {!isLoading && signals.length === 0 && !error && (
+          {!isLoading && filteredSignals.length === 0 && !error && (
             <div className="col-span-full text-center text-muted-foreground py-10">
-              No relevant market signals found for the `{activeFilter}` filter.
-              Try adjusting preferences or check back later.
+              No market signals found for the `{activeFilter}` filter after
+              processing {TOP_SYMBOLS_TO_PROCESS.length} symbols.
             </div>
           )}
+          {!isLoading &&
+            filteredSignals.length === 0 &&
+            error && ( // Show this if there was an error and no signals are displayed
+              <div className="col-span-full text-center text-muted-foreground py-10">
+                Signal display unavailable due to processing issues. Please see
+                error above.
+              </div>
+            )}
         </div>
       </div>
     </div>

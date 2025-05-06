@@ -1,111 +1,57 @@
-/* ──────────────────────────────────────────────────────────────────────
- * app/api/signals/[symbol]/route.ts
- * Handler for GET requests to fetch signals for a specific symbol.
- * Applies additional filtering based on query parameters.
- * ---------------------------------------------------------------------*/
+// app/api/signals/[symbol]/route.ts
 import { NextResponse } from "next/server";
-import { getSignalsForSymbol } from "@/lib/services/signals"; // Adjust path if needed
-import type { SignalRow, SignalQueryOptions } from "@/lib/services/signals"; // Adjust path if needed
+import { getSignalsForSymbol } from "@/lib/services/signals"; // Orchestrator service
+import type { SignalRow as DbSignalRow } from "@/lib/services/signals"; // DB row type
+import {
+  transformDbSignalToMarketSignal,
+  type MarketSignal,
+} from "@/lib/services/signals/formatting"; // Transformation service
 
-/**
- * Handles GET requests to fetch signals for a specific symbol.
- * Supports filtering via query parameters: signalDate, signalCode, signalCategory, signalType.
- * Example: /api/signals/AAPL?signalDate=2025-05-01&signalCode=SMA50_CROSS
- */
 export async function GET(
-  request: Request,
+  request: Request, // Keep for standard signature
   { params }: { params: Promise<{ symbol: string }> }
-): Promise<NextResponse<SignalRow[] | { error: string }>> {
+): Promise<NextResponse<MarketSignal[] | { error: string }>> {
   // Access symbol directly from params, uppercase it
   const { symbol: symbolParam } = await params;
   const symbol = symbolParam?.toUpperCase();
-  const { searchParams } = new URL(request.url);
 
-  const routePath = `/api/signals/${symbol}`;
-  console.log(`${routePath} called with query: ${searchParams.toString()}`);
-
-  if (!symbol) {
-    return NextResponse.json(
-      { error: "Symbol parameter is missing or invalid." },
-      { status: 400 }
-    );
-  }
-
-  // Extract query parameters for filtering
-  const queryOptions: Partial<SignalQueryOptions> = {
-    symbol: symbol, // Symbol is from path, but good to have in options object
-  };
-  if (searchParams.has("signalDate"))
-    queryOptions.signalDate = searchParams.get("signalDate") as string;
-  if (searchParams.has("signalCode"))
-    queryOptions.signalCode = searchParams.get("signalCode") as string;
-  if (searchParams.has("signalCategory"))
-    queryOptions.signalCategory = searchParams.get("signalCategory") as string;
-  if (searchParams.has("signalType")) {
-    const signalTypeParam = searchParams.get("signalType") as string;
-    if (signalTypeParam === "event" || signalTypeParam === "state") {
-      queryOptions.signalType = signalTypeParam;
-    } else {
-      return NextResponse.json(
-        { error: "Invalid signalType. Must be 'event' or 'state'." },
-        { status: 400 }
-      );
-    }
-  }
-  if (
-    queryOptions.signalDate &&
-    !/^\d{4}-\d{2}-\d{2}$/.test(queryOptions.signalDate)
-  ) {
-    return NextResponse.json(
-      { error: "Invalid signalDate format. Please use YYYY-MM-DD." },
-      { status: 400 }
-    );
-  }
+  console.log(
+    `[Signals] GET request for symbol: ${symbol}. This will process and transform signals.`
+  );
 
   try {
-    // The getSignalsForSymbol service handles cache checks and generation for the symbol.
-    // It returns all signals for that symbol.
-    let signals: SignalRow[] = await getSignalsForSymbol(symbol);
+    // Step 1: Ensure signals are up-to-date for this specific symbol and get raw data.
+    // getSignalsForSymbol is the orchestrator that calls all individual signal processors.
+    const rawSignals: DbSignalRow[] = await getSignalsForSymbol(symbol);
 
-    // Apply additional filtering based on query parameters
-    if (queryOptions.signalDate) {
-      signals = signals.filter(
-        (signal) => signal.signal_date === queryOptions.signalDate
+    if (!rawSignals) {
+      // Should ideally always be an array from getSignalsForSymbol
+      console.warn(
+        `[Signals] getSignalsForSymbol returned null or undefined for ${symbol}.`
       );
+      return NextResponse.json([], { status: 200 }); // Return empty array
     }
-    if (queryOptions.signalCode) {
-      signals = signals.filter(
-        (signal) =>
-          signal.signal_code?.toLowerCase() ===
-          queryOptions.signalCode?.toLowerCase()
-      );
-    }
-    if (queryOptions.signalCategory) {
-      signals = signals.filter(
-        (signal) =>
-          signal.signal_category?.toLowerCase() ===
-          queryOptions.signalCategory?.toLowerCase()
-      );
-    }
-    if (queryOptions.signalType) {
-      signals = signals.filter(
-        (signal) => signal.signal_type === queryOptions.signalType
-      );
-    }
+
+    // Step 2: Transform the raw signals into the MarketSignal format for the frontend.
+    const marketSignals: MarketSignal[] = rawSignals.map(
+      transformDbSignalToMarketSignal
+    );
 
     console.log(
-      `[Route ${routePath}] Successfully retrieved and filtered ${signals.length} signals for ${symbol}.`
+      `[Signals] Successfully processed and transformed signals for ${symbol}. Total market signals: ${marketSignals.length}.`
     );
-    return NextResponse.json(signals, { status: 200 });
+    return NextResponse.json(marketSignals, { status: 200 });
   } catch (error: unknown) {
-    let errorMessage = `An unknown error occurred while fetching signals for ${symbol}.`;
+    let errorMessage = `An unknown error occurred while processing signals for symbol ${symbol}.`;
+
     if (error instanceof Error) {
       errorMessage = error.message;
     }
+
     console.error(
-      `[Route ${routePath}] Error for ${symbol}:`,
+      `[Signals] Critical error for symbol ${symbol}:`,
       errorMessage,
-      error
+      error // Log the original error object for more details
     );
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
