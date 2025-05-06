@@ -1,5 +1,8 @@
+-- Ensure the moddatetime extension is enabled (run once per database)
+CREATE EXTENSION IF NOT EXISTS moddatetime;
+
 -- Drop table only if it exists (safer for iterative development)
-DROP TABLE IF EXISTS public.balance_sheet_statements;
+-- DROP TABLE IF EXISTS public.balance_sheet_statements;
 
 -- Create the balance_sheet_statements table
 CREATE TABLE IF NOT EXISTS public.balance_sheet_statements (

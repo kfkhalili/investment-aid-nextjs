@@ -1,5 +1,8 @@
+-- Ensure the moddatetime extension is enabled (run once per database)
+CREATE EXTENSION IF NOT EXISTS moddatetime;
+
 -- Drop table only if it exists (safer for development iterations)
-DROP TABLE IF EXISTS public.profiles;
+-- DROP TABLE IF EXISTS public.profiles;
 
 -- Create the profiles table
 CREATE TABLE IF NOT EXISTS public.profiles (

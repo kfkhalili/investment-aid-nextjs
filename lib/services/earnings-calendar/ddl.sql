@@ -2,7 +2,7 @@
 CREATE EXTENSION IF NOT EXISTS moddatetime;
 
 -- Drop table only if it exists (safer for iterative development)
-DROP TABLE IF EXISTS public.earnings_calendar;
+-- DROP TABLE IF EXISTS public.earnings_calendar;
 
 -- Create the earnings_calendar table
 CREATE TABLE IF NOT EXISTS public.earnings_calendar (

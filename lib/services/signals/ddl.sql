@@ -1,3 +1,6 @@
+-- Ensure the moddatetime extension is enabled (run once per database)
+CREATE EXTENSION IF NOT EXISTS moddatetime;
+
 -- Drop table if it exists (optional, for development/resetting)
 -- DROP TABLE IF EXISTS public.signals;
 
