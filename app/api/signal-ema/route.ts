@@ -1,4 +1,4 @@
-// app/api/signal/ema/route.ts
+// app/api/signal-ema/route.ts
 
 import { type NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase/serverClient"; // Adjust path if needed
@@ -126,16 +126,6 @@ function calculateEMAs(
 
 // --- Main Route Handler ---
 export async function GET(request: NextRequest): Promise<NextResponse> {
-  // --- Security Check ---
-  const authToken = (request.headers.get("authorization") || "")
-    .split("Bearer ")
-    .at(1);
-  if (process.env.CRON_SECRET && authToken !== process.env.CRON_SECRET) {
-    console.warn("[EMA Signal] Unauthorized attempt"); // Corrected Prefix
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  // ---
-
   const { searchParams } = new URL(request.url);
   const batchParam = searchParams.get("batch");
   const batchNumber = batchParam ? parseInt(batchParam, 10) : 1;

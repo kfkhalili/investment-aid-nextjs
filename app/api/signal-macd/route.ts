@@ -1,4 +1,4 @@
-// app/api/signal/macd/route.ts
+// app/api/signal-macd/route.ts
 
 import { type NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase/serverClient";
@@ -168,16 +168,6 @@ function calculateMACD(
 
 // --- Main Route Handler ---
 export async function GET(request: NextRequest): Promise<NextResponse> {
-  // --- Security Check ---
-  const authToken = (request.headers.get("authorization") || "")
-    .split("Bearer ")
-    .at(1);
-  if (process.env.CRON_SECRET && authToken !== process.env.CRON_SECRET) {
-    console.warn("[MACD Signal] Unauthorized attempt");
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  // ---
-
   console.log(
     `[MACD Signal] Starting MACD signal generation for ${ALL_SYMBOLS_TO_PROCESS.length} symbols.`
   );

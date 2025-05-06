@@ -1,6 +1,6 @@
-// app/api/signal/earnings/route.ts
+// app/api/signal-earnings/route.ts
 
-import { type NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase/serverClient";
 import type { Database, Json } from "@/lib/supabase/database.types";
 
@@ -81,17 +81,7 @@ const UPCOMING_EARNINGS_CODE = "EARNINGS_UPCOMING";
 // ---
 
 // --- Main Route Handler ---
-export async function GET(request: NextRequest): Promise<NextResponse> {
-  // --- Security Check ---
-  const authToken = (request.headers.get("authorization") || "")
-    .split("Bearer ")
-    .at(1);
-  if (process.env.CRON_SECRET && authToken !== process.env.CRON_SECRET) {
-    console.warn("[Earnings Signal] Unauthorized attempt");
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  // ---
-
+export async function GET(): Promise<NextResponse> {
   console.log(`[Earnings Signal] Starting earnings signal generation.`);
 
   const supabase = getSupabaseServerClient();

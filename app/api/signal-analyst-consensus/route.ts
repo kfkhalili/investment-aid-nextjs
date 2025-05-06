@@ -1,6 +1,6 @@
-// app/api/signal/analyst-consensus/route.ts
+// app/api/signal-analyst-consensus/route.ts
 
-import { type NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase/serverClient";
 import type { Database } from "@/lib/supabase/database.types";
 
@@ -86,16 +86,7 @@ function getConsensusRank(consensus: string | null | undefined): number | null {
 }
 
 // --- Main Route Handler ---
-export async function GET(request: NextRequest): Promise<NextResponse> {
-  // --- Security Check ---
-  const authToken = (request.headers.get("authorization") || "")
-    .split("Bearer ")
-    .at(1);
-  if (process.env.CRON_SECRET && authToken !== process.env.CRON_SECRET) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  // ---
-
+export async function GET(): Promise<NextResponse> {
   console.log(
     `[Analyst Signal Top2] Starting consensus signal generation for ${ALL_SYMBOLS_TO_PROCESS.length} symbols.`
   );
