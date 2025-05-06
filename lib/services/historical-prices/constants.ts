@@ -1,5 +1,5 @@
 /* ──────────────────────────────────────────────────────────────────────
- * src/api/historical-price/service/constants.ts
+ * lib/services/historical-prices/constants.ts
  * Constants for the Historical Price service.
  * ---------------------------------------------------------------------*/
 import type { HistoricalPriceApiItem } from "./types"; // Import API type if defining order

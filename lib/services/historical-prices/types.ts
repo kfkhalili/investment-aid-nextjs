@@ -1,11 +1,9 @@
 /* ──────────────────────────────────────────────────────────────────────
- * src/api/historical-price/service/types.ts (Supabase Version)
+ * lib/services/historical-prices/types.ts
  * Type definitions for Historical Price data using Supabase.
  * ---------------------------------------------------------------------*/
-import type { Database } from "@/lib/supabase/database.types"; // Import generated DB types
+import type { Database } from "@/lib/supabase/database.types";
 
-// Define RowType using generated types
-// Assumes your table name is 'historical_prices'
 export type HistoricalPriceRow =
   Database["public"]["Tables"]["historical_prices"]["Row"];
 

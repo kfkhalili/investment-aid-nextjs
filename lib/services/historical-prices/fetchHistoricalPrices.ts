@@ -1,11 +1,10 @@
 /* ──────────────────────────────────────────────────────────────────────
- * src/api/historical-price/service/fetchHistoricalPrices.ts
+ * lib/services/historical-prices/fetchHistoricalPrices.ts
  * Dedicated service function for fetching/caching historical price data.
  * (Profile dependency check moved to the API route handler)
  * ---------------------------------------------------------------------*/
 import { SupabaseClient, PostgrestError } from "@supabase/supabase-js";
 import { getSupabaseServerClient } from "@/lib/supabase/serverClient";
-// Removed profile service import
 import {
   RawHistoricalPriceResponse,
   RawHistoricalPriceItem,
@@ -13,7 +12,6 @@ import {
   HistoricalPriceInsertData,
 } from "./types";
 import { CACHE_TTL_MS } from "./constants";
-// Removed unused common helpers import
 
 const TABLE_NAME = "historical_prices";
 const FMP_PATH = "historical-price-full";

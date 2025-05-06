@@ -6,8 +6,7 @@
  * ---------------------------------------------------------------------*/
 import { NextResponse } from "next/server";
 
-// 1. Import service methods for BOTH profile and balance sheet
-import { getProfile } from "@/api/profiles/service";
+import { getProfile } from "@/lib/services/profiles";
 import {
   getBalanceSheetStatementsForSymbol,
   getLatestBalanceSheetStatement,

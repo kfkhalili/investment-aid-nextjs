@@ -1,10 +1,11 @@
 /* ──────────────────────────────────────────────────────────────────────
- * src/api/historical-price/service/index.ts (Supabase Version)
- * Exports the dedicated service function for historical prices.
+ * lib/services/historical-prices/index.ts
+ * Exports the dedicated service functions for historical prices.
  * ---------------------------------------------------------------------*/
 
-// Export the function we will create in the next step
 export { getHistoricalPricesForSymbol } from "./fetchHistoricalPrices";
+// Export the new function from its new file
+export { getHistoricalPricesForAllSymbolsByDate } from "./fetchHistoricalPricesByDate";
 
 // Re-export relevant types for consumers
 export type { HistoricalPriceApiItem, HistoricalPriceRow } from "./types";
